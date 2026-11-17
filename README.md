@@ -16,6 +16,10 @@ channel** until you have finished the day's puzzle.
 Finishing the puzzle (even with an X/6) unlocks `#wordle-spoilers` until the next
 midnight.
 
+The server's **streak** — consecutive days with at least one solver — is tracked too;
+`/wordle-streak` reports it, and an admin can seed it with the number you had before the
+bot (`/wordle-streak count:105`).
+
 The bot never reads points from names and never edits nicknames.
 
 ## Commands
@@ -28,6 +32,7 @@ The bot never reads points from names and never edits nicknames.
 | `/wordle-unregister [user:]` | Leave and drop your role (admins can remove others) |
 | `/points [user:]` | Your total, wins, and today's standing |
 | `/wordle-leaderboard [scope:]` | Today's ranking, or the all-time board |
+| `/wordle-streak [count:]` | The server's day streak; admins can set it (0 clears) |
 | `/wordle-status` | Configuration, registered count, today's shares |
 
 **For admins**
@@ -50,6 +55,17 @@ The bot never reads points from names and never edits nicknames.
 - A day ends at local midnight (`America/Indianapolis` by default). If the bot was
   offline, it closes missed days on the next start. Admins can close or reopen a day
   early.
+
+## Streak
+
+- A day counts if **at least one member solved** the puzzle. Consecutive counted days make
+  the streak.
+- The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
+  streak still stands.
+- `/wordle-streak` shows the current and best streak. `/wordle-close` reports it too.
+- Admins can carry a streak over from a previous system:
+  `/wordle-streak count:105` seeds it through yesterday (or through today if someone has
+  already solved), and `count:0` clears the seed.
 
 ## Roles and spoilers
 
@@ -120,7 +136,7 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 128 offline tests, no token or network needed
+npm test          # 147 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Wordle day, prints the whole flow

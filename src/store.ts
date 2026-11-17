@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import type { StreakSeed } from "./core/streak.js";
 
 export interface StoredEntry {
   userId: string;
@@ -37,6 +38,8 @@ export interface GuildConfig {
   timeZone: string;
   /** Day whose spoiler access has already been reset, so restarts don't redo it. */
   lastResetDay: string | null;
+  /** Streak carried over from before the bot, null when not set. */
+  streakSeed: StreakSeed | null;
 }
 
 export interface StoreData {
@@ -54,6 +57,7 @@ export function emptyData(timeZone: string): StoreData {
       spoilerChannelId: null,
       timeZone,
       lastResetDay: null,
+      streakSeed: null,
     },
     players: {},
     days: {},

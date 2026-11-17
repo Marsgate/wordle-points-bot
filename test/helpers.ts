@@ -185,11 +185,16 @@ export function options(values: {
   scope?: string | null;
   user?: { id: string; name: string } | null;
   points?: number | null;
+  count?: number | null;
 }): CommandOptions {
   return {
     getString: (name) => (name === "scope" ? (values.scope ?? null) : null),
     getBoolean: () => null,
-    getNumber: (name) => (name === "points" ? (values.points ?? null) : null),
+    getNumber: (name) => {
+      if (name === "points") return values.points ?? null;
+      if (name === "count") return values.count ?? null;
+      return null;
+    },
     getUser: (name) => (name === "user" ? (values.user ?? null) : null),
     getChannel: (name) => (name === "spoilers" ? (values.spoilers ?? null) : null),
   };

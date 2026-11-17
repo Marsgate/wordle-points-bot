@@ -1,6 +1,7 @@
 import { dayKey, formatDayLabel } from "../core/day.js";
 import { formatPoints } from "../core/points.js";
 import { roundToHalf, scoreDay, type ScoredEntry } from "../core/scoring.js";
+import { computeStreak, previousDayKey } from "../core/streak.js";
 import type { JsonStore } from "../store.js";
 import type { DailyService } from "../services/daily.js";
 import type { DisplayService } from "../services/display.js";
@@ -50,6 +51,18 @@ function plural(count: number, word: string): string {
 
 function rankOf(entry: ScoredEntry): number {
   return entry.solved ? entry.guesses : 7;
+}
+
+/** Days on which at least one member solved the puzzle. */
+function wonDays(store: JsonStore): string[] {
+  return Object.values(store.data.days)
+    .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
+    .map((day) => day.key);
+}
+
+function hasWinnerOn(store: JsonStore, key: string): boolean {
+  const day = store.data.days[key];
+  return Boolean(day && Object.values(day.entries).some((entry) => entry.solved));
 }
 
 function medal(index: number): string {
@@ -257,6 +270,43 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       );
     }
 
+    case "wordle-streak": {
+      const config = deps.store.config;
+      const today = dayKey(ctx.now, config.timeZone);
+      const raw = ctx.options.getNumber("count");
+
+      if (raw !== null) {
+        if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to set the server streak.");
+        if (!Number.isFinite(raw) || !Number.isInteger(raw) || raw < 0) {
+          return ephemeral("Enter a whole number of days (`0` clears the seeded streak).");
+        }
+
+        if (raw === 0) {
+          config.streakSeed = null;
+          await deps.store.save();
+          return ephemeral("Seeded streak cleared; the streak now counts recorded days only.");
+        }
+
+        // A number that already includes today's win is anchored to today;
+        // otherwise it covers everything through yesterday.
+        const seedDay = hasWinnerOn(deps.store, today) ? today : previousDayKey(today);
+        config.streakSeed = { day: seedDay, count: raw };
+        await deps.store.save();
+
+        return ephemeral(
+          `Server streak set to **${raw} ${raw === 1 ? "day" : "days"}** through ` +
+            `${formatDayLabel(seedDay, config.timeZone)}.`,
+        );
+      }
+
+      const streak = computeStreak({ wonDays: wonDays(deps.store), today, seed: config.streakSeed });
+      const seedNote = config.streakSeed
+        ? `\n_Includes a seeded ${config.streakSeed.count}-day run through ${config.streakSeed.day}._`
+        : "";
+
+      return ephemeral(`🔥 **${streak.current} day server streak** · best **${streak.best}**${seedNote}`);
+    }
+
     case "wordle-close": {
       if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to close a day.");
 
@@ -288,11 +338,18 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
           ? `\n${plural(report.failures.length, "role")} could not be updated (they may outrank me).`
           : "";
 
+      const streak = computeStreak({
+        wonDays: wonDays(deps.store),
+        today: key,
+        seed: deps.store.config.streakSeed,
+      });
+
       return ephemeral(
         [
           `**Closed ${formatDayLabel(key, timeZone)}**`,
           ...lines,
           `Updated ${plural(report.updated.length, "points role")}.${failureNote}`,
+          `🔥 ${streak.current} day server streak (best ${streak.best}).`,
           "Later shares today will not count. The next day starts at midnight.",
         ].join("\n"),
       );

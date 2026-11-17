@@ -50,6 +50,12 @@ export const commandDefinitions = [
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
+  builder("wordle-streak", "Show the server's Wordle streak; admins can seed it").addNumberOption((option) =>
+    option
+      .setName("count")
+      .setDescription("Admin: set the current streak in days (0 clears it)"),
+  ),
+
   builder("wordle-close", "Close today's results now and award points (later shares today will not count)")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 

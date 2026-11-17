@@ -291,6 +291,7 @@ describe("/wordle-close", () => {
 
     expect(reply.content).toContain("Closed");
     expect(reply.content).toContain("10 pts");
+    expect(reply.content).toContain("server streak");
     expect(h.store.data.players["user-1"]?.total).toBe(10);
     expect(h.store.data.days["2026-11-16"]?.finalized).toBe(true);
     expect(h.members.roles.size).toBe(1);
@@ -316,6 +317,59 @@ describe("/wordle-close", () => {
 
     expect(reply.content).toContain("Manage Server");
     expect(h.store.data.days["2026-11-16"]?.finalized).toBe(false);
+  });
+});
+
+describe("/wordle-streak", () => {
+  it("reports the streak from recorded winning days", async () => {
+    h = await harness();
+    await post(h, "user-1", 3);
+
+    const reply = await runCommand("wordle-streak", context(), deps(h));
+
+    expect(reply.content).toContain("1 day server streak");
+  });
+
+  it("lets an admin seed a long streak", async () => {
+    h = await harness();
+
+    const reply = await runCommand("wordle-streak", context({ options: options({ count: 105 }) }), deps(h));
+    expect(reply.content).toContain("105");
+
+    const view = await runCommand("wordle-streak", context(), deps(h));
+    expect(view.content).toContain("105 day server streak");
+  });
+
+  it("extends the seed with today's win", async () => {
+    h = await harness();
+    await runCommand("wordle-streak", context({ options: options({ count: 105 }) }), deps(h));
+    await post(h, "user-1", 3);
+
+    const view = await runCommand("wordle-streak", context(), deps(h));
+
+    expect(view.content).toContain("106 day server streak");
+  });
+
+  it("refuses a non-admin seed and non-whole numbers", async () => {
+    h = await harness();
+
+    const denied = await runCommand(
+      "wordle-streak",
+      context({ isAdmin: false, options: options({ count: 5 }) }),
+      deps(h),
+    );
+    expect(denied.content).toContain("Manage Server");
+
+    const invalid = await runCommand("wordle-streak", context({ options: options({ count: 2.5 }) }), deps(h));
+    expect(invalid.content).toContain("whole number");
+  });
+
+  it("clears the seed with 0", async () => {
+    h = await harness();
+    await runCommand("wordle-streak", context({ options: options({ count: 105 }) }), deps(h));
+    await runCommand("wordle-streak", context({ options: options({ count: 0 }) }), deps(h));
+
+    expect(h.store.config.streakSeed).toBeNull();
   });
 });
 
