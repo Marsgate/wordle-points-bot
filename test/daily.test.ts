@@ -55,7 +55,7 @@ describe("DailyService.finalizeDay", () => {
     expect(h.store.data.days["2026-11-16"]?.finalized).toBe(true);
     expect(h.store.data.days["2026-11-16"]?.points).toEqual({ "user-1": 5, "user-2": 5 });
 
-    const ada = roleNamed(h, "𝓐𝓭𝓪 ✦ · 5 pts");
+    const ada = roleNamed(h, "5");
     expect(ada).toBeDefined();
     expect(ada?.members.has("user-1")).toBe(true);
     expect(h.store.data.players["user-1"]?.roleId).toBeDefined();
@@ -74,7 +74,7 @@ describe("DailyService.finalizeDay", () => {
     expect(h.members.roles.size).toBe(3);
     for (const userId of ["user-1", "user-2", "user-3"]) {
       const role = h.members.roles.get(h.store.data.players[userId]?.roleId ?? "");
-      expect(role?.name).toBe(`${userId} · 3.5 pts`);
+      expect(role?.name).toBe("3.5");
       expect(role?.members.has(userId)).toBe(true);
     }
   });
@@ -119,7 +119,7 @@ describe("DailyService.finalizeDay", () => {
     await h.daily.finalizeDay("2026-11-16");
 
     expect(h.store.data.players["user-1"]?.total).toBe(0);
-    expect(roleNamed(h, "user-1 · 0 pts")?.members.has("user-1")).toBe(true);
+    expect(roleNamed(h, "0")?.members.has("user-1")).toBe(true);
   });
 
   it("awards nothing when nobody solved", async () => {
@@ -146,7 +146,7 @@ describe("DailyService.rollover", () => {
 
     expect(report.finalized).toEqual(["2026-11-14", "2026-11-15"]);
     expect(h.store.data.players["user-1"]?.total).toBe(20);
-    expect(roleNamed(h, "user-1 · 20 pts")).toBeDefined();
+    expect(roleNamed(h, "20")).toBeDefined();
   });
 
   it("leaves the current day open", async () => {
@@ -216,9 +216,9 @@ describe("DailyService.resync", () => {
 
     expect(report.updated.sort()).toEqual(["user-1", "user-2", "user-3"]);
     expect(h.members.roles.size).toBe(3);
-    expect(roleNamed(h, "Ada · 12.5 pts")).toBeDefined();
-    expect(roleNamed(h, "Bob · 0 pts")).toBeDefined();
-    expect(roleNamed(h, "Cleo · 3 pts")).toBeDefined();
+    expect(roleNamed(h, "12.5")).toBeDefined();
+    expect(roleNamed(h, "0")).toBeDefined();
+    expect(roleNamed(h, "3")).toBeDefined();
   });
 
   it("creates a role for a negative total", async () => {
@@ -228,7 +228,7 @@ describe("DailyService.resync", () => {
     const report = await h.daily.resync();
 
     expect(report.updated).toEqual(["user-1"]);
-    expect(roleNamed(h, "user-1 · -4 pts")?.members.has("user-1")).toBe(true);
+    expect(roleNamed(h, "-4")?.members.has("user-1")).toBe(true);
   });
 
   it("keeps a 0-point role for a registered member", async () => {
@@ -239,7 +239,7 @@ describe("DailyService.resync", () => {
     const report = await h.daily.resync();
 
     expect(report.updated).toEqual(["user-1"]);
-    expect(roleNamed(h, "ada · 0 pts")?.members.has("user-1")).toBe(true);
+    expect(roleNamed(h, "0")?.members.has("user-1")).toBe(true);
   });
 
   it("removes the role of an unregistered player", async () => {

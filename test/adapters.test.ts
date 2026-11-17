@@ -177,12 +177,6 @@ function fakeGuild() {
 }
 
 describe("DiscordMemberPort", () => {
-  it("reads nicknames for role naming", async () => {
-    const { client } = fakeGuild();
-    const port = new DiscordMemberPort(client, () => "guild-1", silentLogger);
-
-    expect(await port.readNickname("user-1")).toBe("Ada ✦");
-  });
 
   it("creates a permissionless personal role and assigns it", async () => {
     const { client, addedRoles, createdOptions } = fakeGuild();

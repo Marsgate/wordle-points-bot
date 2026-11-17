@@ -180,7 +180,7 @@ describe("/wordle-award", () => {
     expect(h.store.data.players["user-9"]?.total).toBe(2.5);
 
     const role = [...h.members.roles.values()][0];
-    expect(role?.name).toBe("Nine ✦ · 2.5 pts");
+    expect(role?.name).toBe("2.5");
     expect(role?.members.has("user-9")).toBe(true);
   });
 
@@ -199,7 +199,7 @@ describe("/wordle-award", () => {
 
     expect(player.total).toBe(-7);
     expect(h.store.data.players["user-9"]?.roleId).toBe("role-1");
-    expect(h.members.roles.get("role-1")?.name).toBe("Nine ✦ · -7 pts");
+    expect(h.members.roles.get("role-1")?.name).toBe("-7");
     expect(reply.content).toContain("-7");
   });
 
@@ -218,7 +218,7 @@ describe("/wordle-award", () => {
 
     expect(player.total).toBe(0);
     expect(player.roleId).toBe("role-1");
-    expect(h.members.roles.get("role-1")?.name).toBe("Nine ✦ · 0 pts");
+    expect(h.members.roles.get("role-1")?.name).toBe("0");
     expect(reply.content).toContain("0");
   });
 });
@@ -386,7 +386,7 @@ describe("/wordle-reopen", () => {
     expect(h.store.data.players["user-1"]?.total).toBe(0);
     expect(h.store.data.days["2026-11-16"]?.finalized).toBe(false);
     expect(h.store.data.days["2026-11-16"]?.points).toEqual({});
-    expect([...h.members.roles.values()][0]?.name).toBe("user-1 · 0 pts");
+    expect([...h.members.roles.values()][0]?.name).toBe("0");
 
     await runCommand("wordle-close", context(), deps(h));
     expect(h.store.data.players["user-1"]?.total).toBe(10);
@@ -419,7 +419,7 @@ describe("/wordle-resync", () => {
     expect(reply.content).toContain("Updated 2 points roles");
     expect(h.members.roles.size).toBe(2);
     const names = [...h.members.roles.values()].map((role) => role.name).sort();
-    expect(names).toEqual(["Ada · 4 pts", "Bob · 1.5 pts"]);
+    expect(names).toEqual(["1.5", "4"]);
   });
 });
 
@@ -437,7 +437,7 @@ describe("/wordle-register", () => {
     expect(player?.registered).toBe(true);
     expect(player?.total).toBe(12.5);
     expect(reply.content).toContain("Registered");
-    expect([...h.members.roles.values()][0]?.name).toBe("Nine ✦ · 12.5 pts");
+    expect([...h.members.roles.values()][0]?.name).toBe("12.5");
   });
 
   it("registers at zero with a 0-point role", async () => {
@@ -451,7 +451,7 @@ describe("/wordle-register", () => {
 
     expect(h.store.data.players["user-9"]?.registered).toBe(true);
     expect(h.store.data.players["user-9"]?.total).toBe(0);
-    expect([...h.members.roles.values()][0]?.name).toBe("nine · 0 pts");
+    expect([...h.members.roles.values()][0]?.name).toBe("0");
     expect(reply.content).toContain("0 points");
   });
 
@@ -465,7 +465,7 @@ describe("/wordle-register", () => {
     );
 
     expect(h.store.data.players["user-9"]?.total).toBe(-10);
-    expect([...h.members.roles.values()][0]?.name).toBe("nine · -10 pts");
+    expect([...h.members.roles.values()][0]?.name).toBe("-10");
     expect(reply.content).toContain("Your role is");
   });
 

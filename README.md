@@ -1,8 +1,8 @@
 # WordleScoreBot
 
 A self-hosted Discord bot that turns the server's daily Wordle results into points, keeps
-the scoreboard in a **personal role** (`𝓐𝓭𝓪 ✦ · 13.5 pts`), and locks a **spoiler
-channel** until you have finished the day's puzzle.
+the scoreboard in a **personal role** whose name is the score (`13.5`), and locks a
+**spoiler channel** until you have finished the day's puzzle.
 
 ## The basics
 
@@ -75,9 +75,11 @@ The bot never reads points from names and never edits nicknames.
 
 ## Roles and spoilers
 
-- One role per registered member, named `<their name> · <total> pts`, created with no
-  permissions. Colours band the totals: grey under 10, green 10–24.5, blue 25–49.5, gold
-  50+.
+- One role per registered member, named with the number only (`13.5`, `0`, `-114`),
+  created with no permissions. Colours band the totals: grey under 10, green 10–24.5, blue
+  25–49.5, gold 50+.
+- The role is renamed whenever the total changes; no nickname is used, so renaming yourself
+  needs no resync.
 - The role shows as a member's badge only if it is their highest role.
 - `/wordle-unregister` is the only thing that removes a role — not a zero total.
 - The spoiler channel is denied to `@everyone` and opened per member when their share is
@@ -142,7 +144,7 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 161 offline tests, no token or network needed
+npm test          # 153 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Wordle day, prints the whole flow

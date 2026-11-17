@@ -36,7 +36,6 @@ const spoilerAccess = new Set<string>();
 let roleSequence = 0;
 
 const memberPort: MemberPort = {
-  readNickname: async (userId) => nicknames.get(userId) ?? null,
   listMembers: async () =>
     [...nicknames.entries()].map(([userId, nickname]) => ({
       userId,

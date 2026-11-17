@@ -9,8 +9,6 @@ export interface MemberSummary {
 }
 
 export interface MemberPort {
-  /** Current guild nickname, or null when the member has none. */
-  readNickname(userId: string): Promise<string | null>;
   /** Every member of the guild, for resolving plain names in a summary. */
   listMembers(): Promise<MemberSummary[]>;
   /**

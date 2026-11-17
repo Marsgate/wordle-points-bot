@@ -66,7 +66,6 @@ export class DailyService {
         const applied = await this.deps.display.applyPoints(
           winner.userId,
           player.total,
-          player.displayName,
           player.roleId ?? null,
         );
 
@@ -135,7 +134,6 @@ export class DailyService {
         const applied = await this.deps.display.applyPoints(
           userId,
           player.total,
-          player.displayName,
           player.roleId ?? null,
         );
         if (applied.ok) player.roleId = applied.roleId;
@@ -175,7 +173,6 @@ export class DailyService {
       const applied = await this.deps.display.applyPoints(
         player.userId,
         player.total,
-        player.displayName,
         player.roleId ?? null,
       );
 

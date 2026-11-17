@@ -220,7 +220,7 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       player.registered = true;
 
       // Every registered member has a role, including at exactly 0.
-      const applied = await deps.display.applyPoints(ctx.userId, total, ctx.userName, player.roleId ?? null);
+      const applied = await deps.display.applyPoints(ctx.userId, total, player.roleId ?? null);
       const note = applied.ok
         ? ` Your role is \`${applied.roleName}\`.`
         : ` (role not created: ${applied.reason})`;
@@ -254,7 +254,7 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       // Totals may be zero or negative; the role always follows the total.
       player.total = roundToHalf(player.total + delta);
 
-      const applied = await deps.display.applyPoints(target.id, player.total, player.displayName, player.roleId ?? null);
+      const applied = await deps.display.applyPoints(target.id, player.total, player.roleId ?? null);
       const note = applied.ok
         ? applied.changed
           ? ` Role is now \`${applied.roleName}\`.`

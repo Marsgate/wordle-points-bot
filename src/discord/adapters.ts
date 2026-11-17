@@ -36,11 +36,6 @@ export class DiscordMemberPort implements MemberPort {
     return this.client.guilds.fetch(id);
   }
 
-  async readNickname(userId: string): Promise<string | null> {
-    const member = await (await this.requireGuild()).members.fetch(userId);
-    return member.nickname;
-  }
-
   async listMembers(): Promise<MemberSummary[]> {
     const guild = await this.requireGuild();
     const found: MemberSummary[] = [];

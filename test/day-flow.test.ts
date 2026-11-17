@@ -61,11 +61,15 @@ describe("two days end to end", () => {
     expect(h.store.data.players["u-ada"]?.total).toBe(3.5);
     expect(h.store.data.players["u-margaret"]?.total).toBe(0);
 
-    const adaRole = roleNamed(h, "𝓐𝓭𝓪 ✦ · 3.5 pts");
-    expect(adaRole?.members.has("u-ada")).toBe(true);
-    expect(roleNamed(h, "grace · 3.5 pts")?.members.has("u-grace")).toBe(true);
-    expect(roleNamed(h, "Linus 🐧 · 3.5 pts")?.members.has("u-linus")).toBe(true);
-    expect(roleNamed(h, "Margaret Hamilton · 0 pts")).toBeUndefined();
+    const roleOf = (userId: string) => h?.members.roles.get(h.store.data.players[userId]?.roleId ?? "");
+
+    expect(roleOf("u-ada")?.name).toBe("3.5");
+    expect(roleOf("u-ada")?.members.has("u-ada")).toBe(true);
+    expect(roleOf("u-grace")?.name).toBe("3.5");
+    expect(roleOf("u-grace")?.members.has("u-grace")).toBe(true);
+    expect(roleOf("u-linus")?.name).toBe("3.5");
+    expect(roleOf("u-linus")?.members.has("u-linus")).toBe(true);
+    expect(h.store.data.players["u-margaret"]?.roleId ?? null).toBeNull();
     expect(h.members.roles.size).toBe(3);
 
     // Nicknames are no longer rewritten.
@@ -84,7 +88,8 @@ describe("two days end to end", () => {
 
     // The same role is renamed, not duplicated.
     expect(h.members.roles.size).toBe(3);
-    expect(roleNamed(h, "𝓐𝓭𝓪 ✦ · 13.5 pts")?.members.has("u-ada")).toBe(true);
+    expect(roleOf("u-ada")?.name).toBe("13.5");
+    expect(roleOf("u-ada")?.members.has("u-ada")).toBe(true);
     expect(h.members.calls.renamed).toBe(1);
   });
 

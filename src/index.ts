@@ -127,6 +127,17 @@ async function main(): Promise<void> {
         logger.error("Startup rollover failed", error);
       }
 
+      // Keep existing roles in step with the stored totals (also renames them
+      // when the role-name format changes).
+      try {
+        const synced = await daily.resync();
+        if (synced.updated.length > 0) {
+          logger.info(`Re-synced ${synced.updated.length} points role(s) at startup.`);
+        }
+      } catch (error) {
+        logger.warn("Could not sync points roles at startup", error);
+      }
+
       logger.info(
         `Invite URL: https://discord.com/api/oauth2/authorize?client_id=${ready.user.id}` +
           `&permissions=${INVITE_PERMISSIONS}&scope=bot%20applications.commands`,

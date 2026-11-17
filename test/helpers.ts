@@ -31,7 +31,6 @@ export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
   let sequence = 0;
 
   const port: MemberPort = {
-    readNickname: async (userId) => nicknames.get(userId) ?? null,
     listMembers: async () =>
       [...nicknames.entries()].map(([userId, nickname]) => ({
         userId,

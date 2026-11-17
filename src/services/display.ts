@@ -20,12 +20,10 @@ export class DisplayService {
   async applyPoints(
     userId: string,
     total: number,
-    fallbackName: string,
     existingRoleId: string | null,
   ): Promise<ApplyResult> {
     try {
-      const current = await this.deps.port.readNickname(userId);
-      const roleName = roleNameFor(current ?? fallbackName, total);
+      const roleName = roleNameFor(total);
       const { roleId, changed } = await this.deps.port.syncRole(
         userId,
         roleName,
