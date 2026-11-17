@@ -63,11 +63,11 @@ describe("two days end to end", () => {
 
     const roleOf = (userId: string) => h?.members.roles.get(h.store.data.players[userId]?.roleId ?? "");
 
-    expect(roleOf("u-ada")?.name).toBe("3.5");
+    expect(roleOf("u-ada")?.name).toBe("3.5 points");
     expect(roleOf("u-ada")?.members.has("u-ada")).toBe(true);
-    expect(roleOf("u-grace")?.name).toBe("3.5");
+    expect(roleOf("u-grace")?.name).toBe("3.5 points");
     expect(roleOf("u-grace")?.members.has("u-grace")).toBe(true);
-    expect(roleOf("u-linus")?.name).toBe("3.5");
+    expect(roleOf("u-linus")?.name).toBe("3.5 points");
     expect(roleOf("u-linus")?.members.has("u-linus")).toBe(true);
     expect(h.store.data.players["u-margaret"]?.roleId ?? null).toBeNull();
     expect(h.members.roles.size).toBe(3);
@@ -88,7 +88,7 @@ describe("two days end to end", () => {
 
     // The same role is renamed, not duplicated.
     expect(h.members.roles.size).toBe(3);
-    expect(roleOf("u-ada")?.name).toBe("13.5");
+    expect(roleOf("u-ada")?.name).toBe("13.5 points");
     expect(roleOf("u-ada")?.members.has("u-ada")).toBe(true);
     expect(h.members.calls.renamed).toBe(1);
   });

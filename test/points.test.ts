@@ -21,15 +21,15 @@ describe("formatPoints", () => {
 });
 
 describe("roleNameFor", () => {
-  it("is just the number, with no nickname", () => {
-    expect(roleNameFor(13.5)).toBe("13.5");
-    expect(roleNameFor(0)).toBe("0");
-    expect(roleNameFor(-114)).toBe("-114");
-    expect(roleNameFor(1000)).toBe("1000");
+  it("is the number followed by the unit, with no nickname", () => {
+    expect(roleNameFor(13.5)).toBe("13.5 points");
+    expect(roleNameFor(0)).toBe("0 points");
+    expect(roleNameFor(-114)).toBe("-114 points");
+    expect(roleNameFor(1000)).toBe("1000 points");
   });
 
   it("rounds like the display", () => {
-    expect(roleNameFor(3.33)).toBe("3.5");
+    expect(roleNameFor(3.33)).toBe("3.5 points");
   });
 });
 

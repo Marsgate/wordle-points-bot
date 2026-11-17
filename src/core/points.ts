@@ -6,11 +6,11 @@ export function formatPoints(points: number): string {
 }
 
 /**
- * The points role name: just the number ("13.5", "0", "-114"). No nickname,
- * no decoration — the role list reads as a leaderboard.
+ * The points role name: the number followed by the unit ("13.5 points",
+ * "0 points", "-114 points"). No nickname, no decoration.
  */
 export function roleNameFor(points: number): string {
-  return formatPoints(points);
+  return `${formatPoints(points)} points`;
 }
 
 /**

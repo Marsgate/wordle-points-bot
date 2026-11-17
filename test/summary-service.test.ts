@@ -46,7 +46,7 @@ describe("SummaryService", () => {
     expect(day?.points).toEqual({ "111": 10 });
     expect(h.store.data.players["111"]?.total).toBe(10);
     expect(h.store.data.players["222"]?.total).toBe(0);
-    expect([...h.members.roles.values()][0]?.name).toBe("10");
+    expect([...h.members.roles.values()][0]?.name).toBe("10 points");
   });
 
   it("syncs the reported group streak", async () => {
