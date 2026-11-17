@@ -96,7 +96,7 @@ the list by default, so this normally works as-is.
 ### Setup
 
 ```powershell
-git clone <this-repo>
+git clone https://github.com/Marsgate/wordle-points-bot.git
 cd wordle-points-bot
 npm install
 Copy-Item .env.example .env
