@@ -1,0 +1,140 @@
+import {
+  ChannelType,
+  MessageFlags,
+  PermissionFlagsBits,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+  type Client,
+} from "discord.js";
+import { runCommand, type CommandContext, type CommandDeps, type CommandOptions } from "../commands/handlers.js";
+import type { Logger } from "../services/ports.js";
+
+const builder = (name: string, description: string): SlashCommandBuilder =>
+  new SlashCommandBuilder().setName(name).setDescription(description);
+
+export const commandDefinitions = [
+  builder("wordle-setup", "Choose the channel that stays hidden until someone finishes the puzzle")
+    .addChannelOption((option) =>
+      option
+        .setName("spoilers")
+        .setDescription("Channel hidden until a member finishes the day's Wordle")
+        .addChannelTypes(ChannelType.GuildText)
+        .setRequired(true),
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  builder("wordle-register", "Join the points game and enter your current total").addNumberOption((option) =>
+    option
+      .setName("points")
+      .setDescription("Your current Wordle points — use 0 if you are starting fresh")
+      .setRequired(true),
+  ),
+
+  builder("wordle-status", "Show the current Wordle bot configuration"),
+
+  builder("wordle-leaderboard", "Show today's Wordle ranking or the all-time points").addStringOption((option) =>
+    option
+      .setName("scope")
+      .setDescription("Which board to show")
+      .addChoices({ name: "Today", value: "today" }, { name: "All-time", value: "all" }),
+  ),
+
+  builder("points", "Show Wordle points for yourself or another member").addUserOption((option) =>
+    option.setName("user").setDescription("Member to look up (defaults to you)"),
+  ),
+
+  builder("wordle-award", "Manually add or remove Wordle points")
+    .addUserOption((option) => option.setName("user").setDescription("Member to adjust").setRequired(true))
+    .addNumberOption((option) =>
+      option.setName("points").setDescription("Points to add (negative removes, halves allowed)").setRequired(true),
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  builder("wordle-close", "Close today's results now and award points (later shares today will not count)")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  builder("wordle-reopen", "Undo today's close: take the points back and let later shares count")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+
+  builder("wordle-unregister", "Leave the game and drop your points role").addUserOption((option) =>
+    option.setName("user").setDescription("Member to unregister (admins only; defaults to you)"),
+  ),
+
+  builder("wordle-resync", "Re-apply stored totals to the points roles").setDefaultMemberPermissions(
+    PermissionFlagsBits.ManageGuild,
+  ),
+].map((command) => command.toJSON());
+
+/** Global commands take up to an hour to appear; a guild id makes them instant. */
+export async function registerCommands(client: Client, guildId: string | null, logger: Logger): Promise<void> {
+  const application = client.application;
+  if (!application) throw new Error("Discord client is not ready; cannot register commands");
+
+  if (guildId) {
+    const guild = await client.guilds.fetch(guildId);
+    const registered = await guild.commands.set(commandDefinitions);
+    const names = [...registered.values()].map((command) => command.name).join(", ");
+    logger.info(`Registered ${registered.size} slash commands in guild ${guild.name}: ${names}`);
+    return;
+  }
+
+  const registered = await application.commands.set(commandDefinitions);
+  logger.info(
+    `Registered ${registered.size} global slash commands (may take up to an hour to appear): ` +
+      [...registered.values()].map((command) => command.name).join(", "),
+  );
+}
+
+function readOptions(interaction: ChatInputCommandInteraction): CommandOptions {
+  return {
+    getString: (name) => interaction.options.getString(name),
+    getBoolean: (name) => interaction.options.getBoolean(name),
+    getNumber: (name) => interaction.options.getNumber(name),
+    getUser: (name) => {
+      const user = interaction.options.getUser(name);
+      return user ? { id: user.id, name: user.username } : null;
+    },
+    getChannel: (name) => {
+      const channel = interaction.options.getChannel(name);
+      if (!channel) return null;
+      const named = channel as { id: string; name?: string };
+      return { id: named.id, name: named.name ?? named.id };
+    },
+  };
+}
+
+export async function handleInteraction(
+  interaction: ChatInputCommandInteraction,
+  deps: CommandDeps,
+  logger: Logger,
+): Promise<void> {
+  if (!interaction.guildId) {
+    await interaction.reply({ content: "Use this bot inside a server.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  const context: CommandContext = {
+    guildId: interaction.guildId,
+    userId: interaction.user.id,
+    userName: interaction.user.username,
+    isAdmin: interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false,
+    options: readOptions(interaction),
+    now: deps.now(),
+  };
+
+  try {
+    const reply = await runCommand(interaction.commandName, context, deps);
+    const payload = {
+      content: reply.content,
+      ...(reply.ephemeral ? { flags: MessageFlags.Ephemeral as const } : {}),
+    };
+
+    if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+    else await interaction.reply(payload);
+  } catch (error) {
+    logger.error(`Command /${interaction.commandName} failed`, error);
+    const payload = { content: "Something went wrong. Check the bot logs.", flags: MessageFlags.Ephemeral as const };
+    if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
+    else await interaction.reply(payload);
+  }
+}
