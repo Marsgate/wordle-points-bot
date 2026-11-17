@@ -1,5 +1,6 @@
 import { Events, type Client } from "discord.js";
 import type { ResultsService } from "../services/results.js";
+import type { SummaryService } from "../services/summary.js";
 import type { Logger } from "../services/ports.js";
 import { handleInteraction } from "./commands.js";
 import type { CommandDeps } from "../commands/handlers.js";
@@ -8,6 +9,7 @@ export function attachEvents(
   client: Client,
   deps: {
     results: ResultsService;
+    summary: SummaryService;
     commands: CommandDeps;
     logger: Logger;
   },
@@ -19,6 +21,19 @@ export function attachEvents(
     // Fire-and-forget: a slow Discord call must not block the gateway.
     void (async () => {
       try {
+        if (message.author.bot) {
+          // The Wordle Activity's daily summary arrives as a bot message.
+          const applied = await deps.summary.handleMessage({
+            id: message.id,
+            content: message.content,
+            authorIsBot: true,
+            createdAt: message.createdAt,
+            channelId: message.channelId,
+          });
+          if (applied) deps.logger.info(`Applied a Wordle summary in channel ${message.channelId}`);
+          return;
+        }
+
         const outcome = await deps.results.handle({
           id: message.id,
           guildId: message.guildId,

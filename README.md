@@ -16,6 +16,10 @@ channel** until you have finished the day's puzzle.
 Finishing the puzzle (even with an X/6) unlocks `#wordle-spoilers` until the next
 midnight.
 
+The bot also reads the Activity's **daily summary** each morning. That summary lists every
+player's score, so registered members are scored even if they never post a share — shares
+are what unlock the spoiler channel during the day.
+
 The server's **streak** — consecutive days with at least one solver — is tracked too;
 `/wordle-streak` reports it, and an admin can seed it with the number you had before the
 bot (`/wordle-streak count:105`).
@@ -49,6 +53,10 @@ The bot never reads points from names and never edits nicknames.
 
 - Only **solvers** place. An X/6 finishes the puzzle and unlocks spoilers but scores 0.
 - Your **best** share of the day counts: 5/6 followed by 3/6 keeps the 3/6.
+- Results come from two places: the share you post during the day, and the Activity's
+  daily summary the next morning. They are merged per player, keeping the better score.
+- Only **registered** members are scored. Unregistered players in the summary are ignored,
+  so they never take the prize.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
   6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out slightly
   more than 10 in total (a 3-way tie pays 10.5).
@@ -62,10 +70,8 @@ The bot never reads points from names and never edits nicknames.
   the streak.
 - The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
   streak still stands.
-- `/wordle-streak` shows the current and best streak. `/wordle-close` reports it too.
-- Admins can carry a streak over from a previous system:
-  `/wordle-streak count:105` seeds it through yesterday (or through today if someone has
-  already solved), and `count:0` clears the seed.
+- The Activity's summary reports the group streak, so the bot keeps its streak in sync
+  automatically. `/wordle-streak count:` still works for a manual seed.
 
 ## Roles and spoilers
 
@@ -136,7 +142,7 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 147 offline tests, no token or network needed
+npm test          # 161 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Wordle day, prints the whole flow

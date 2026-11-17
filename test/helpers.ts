@@ -2,11 +2,18 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { JsonStore } from "../src/store.js";
-import type { Logger, MemberPort, SpoilerPort } from "../src/services/ports.js";
+import type {
+  Logger,
+  MemberPort,
+  SpoilerPort,
+  SummaryMessage,
+  SummarySourcePort,
+} from "../src/services/ports.js";
 import type { IncomingMessage } from "../src/services/results.js";
 import { DailyService } from "../src/services/daily.js";
 import { DisplayService } from "../src/services/display.js";
 import { ResultsService } from "../src/services/results.js";
+import { SummaryService } from "../src/services/summary.js";
 import type { CommandContext, CommandOptions } from "../src/commands/handlers.js";
 
 export const silentLogger: Logger = { info: () => {}, warn: () => {}, error: () => {} };
@@ -25,6 +32,13 @@ export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
 
   const port: MemberPort = {
     readNickname: async (userId) => nicknames.get(userId) ?? null,
+    listMembers: async () =>
+      [...nicknames.entries()].map(([userId, nickname]) => ({
+        userId,
+        username: userId,
+        nickname,
+        globalName: null,
+      })),
     syncRole: async (userId, roleName, color, existingRoleId) => {
       let roleId = existingRoleId;
       let role = roleId ? roles.get(roleId) : undefined;
@@ -88,6 +102,15 @@ export function fakeSpoilers() {
   return { port, members, calls };
 }
 
+export function fakeSummarySource() {
+  const messagesByChannel = new Map<string, SummaryMessage[]>();
+  const port: SummarySourcePort = {
+    listTextChannelIds: async () => [...messagesByChannel.keys()],
+    fetchRecentMessages: async (channelId) => messagesByChannel.get(channelId) ?? [],
+  };
+  return { port, messagesByChannel };
+}
+
 /** Builds a valid share text for a given guess count. */export function shareFor(guesses: number, solved = true, puzzle = 1512): string {
   const rows = Array.from({ length: guesses }, (_, index) =>
     solved && index === guesses - 1 ? "🟩🟩🟩🟩🟩" : "⬛⬛⬛⬛⬛",
@@ -118,6 +141,8 @@ export interface Harness {
   display: DisplayService;
   daily: DailyService;
   results: ResultsService;
+  summary: SummaryService;
+  summarySource: ReturnType<typeof fakeSummarySource>;
   cleanup: () => Promise<void>;
 }
 
@@ -151,6 +176,7 @@ export async function harness(
 
   const members = fakeMemberPort(options.nicknames);
   const spoilers = fakeSpoilers();
+  const summarySource = fakeSummarySource();
   const now = options.now ?? (() => new Date("2026-11-16T20:00:00Z"));
 
   const display = new DisplayService({ port: members.port, logger: silentLogger });
@@ -167,6 +193,14 @@ export async function harness(
     spoilers: spoilers.port,
     logger: silentLogger,
   });
+  const summary = new SummaryService({
+    store,
+    daily,
+    members: members.port,
+    source: summarySource.port,
+    logger: silentLogger,
+    timeZone: () => store.config.timeZone,
+  });
 
   return {
     dir,
@@ -176,6 +210,8 @@ export async function harness(
     display,
     daily,
     results,
+    summary,
+    summarySource,
     cleanup: () => rm(dir, { recursive: true, force: true }),
   };
 }

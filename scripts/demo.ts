@@ -37,6 +37,13 @@ let roleSequence = 0;
 
 const memberPort: MemberPort = {
   readNickname: async (userId) => nicknames.get(userId) ?? null,
+  listMembers: async () =>
+    [...nicknames.entries()].map(([userId, nickname]) => ({
+      userId,
+      username: userId,
+      nickname,
+      globalName: null,
+    })),
   syncRole: async (userId, roleName, color, existingRoleId) => {
     let roleId = existingRoleId;
     let role = roleId ? roles.get(roleId) : undefined;

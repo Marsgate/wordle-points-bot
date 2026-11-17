@@ -7,11 +7,13 @@ import { JsonStore } from "./store.js";
 import { DailyService } from "./services/daily.js";
 import { DisplayService } from "./services/display.js";
 import { ResultsService } from "./services/results.js";
-import { DiscordMemberPort, DiscordSpoilerPort } from "./discord/adapters.js";
+import { SummaryService } from "./services/summary.js";
+import { DiscordMemberPort, DiscordSpoilerPort, DiscordSummarySource } from "./discord/adapters.js";
 import { registerCommands, registerGuildCommands } from "./discord/commands.js";
 import { attachEvents } from "./discord/events.js";
 
 const TICK_MS = 30_000;
+const SUMMARY_POLL_MS = 10 * 60_000;
 
 const INVITE_PERMISSIONS =
   PermissionFlagsBits.ViewChannel |
@@ -20,6 +22,7 @@ const INVITE_PERMISSIONS =
   PermissionFlagsBits.ManageRoles;
 
 let timer: NodeJS.Timeout | null = null;
+let summaryTimer: NodeJS.Timeout | null = null;
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -41,10 +44,8 @@ async function main(): Promise<void> {
 
   client.on(Events.Error, (error) => logger.error("Discord client error", error));
 
-  const display = new DisplayService({
-    port: new DiscordMemberPort(client, () => store.config.guildId, logger),
-    logger,
-  });
+  const memberPort = new DiscordMemberPort(client, () => store.config.guildId, logger);
+  const display = new DisplayService({ port: memberPort, logger });
   const spoilers = new DiscordSpoilerPort(client, () => store.config.spoilerChannelId, logger);
   const daily = new DailyService({
     store,
@@ -55,9 +56,18 @@ async function main(): Promise<void> {
     now: () => new Date(),
   });
   const results = new ResultsService({ store, spoilers, logger });
+  const summary = new SummaryService({
+    store,
+    daily,
+    members: memberPort,
+    source: new DiscordSummarySource(client, () => store.config.guildId),
+    logger,
+    timeZone: () => store.config.timeZone,
+  });
 
   attachEvents(client, {
     results,
+    summary,
     logger,
     commands: { store, daily, display, spoilers, now: () => new Date() },
   });
@@ -122,7 +132,17 @@ async function main(): Promise<void> {
           `&permissions=${INVITE_PERMISSIONS}&scope=bot%20applications.commands`,
       );
 
+      try {
+        const found = await summary.poll();
+        if (found > 0) logger.info(`Summary scan applied ${found} message(s) from history.`);
+      } catch (error) {
+        logger.warn("Summary scan failed", error);
+      }
+
       timer = setInterval(() => void tick(), TICK_MS);
+      summaryTimer = setInterval(() => {
+        void summary.poll().catch((error: unknown) => logger.warn("Summary scan failed", error));
+      }, SUMMARY_POLL_MS);
     })();
   });
 
@@ -137,6 +157,7 @@ async function main(): Promise<void> {
   const shutdown = (signal: string): void => {
     logger.info(`Received ${signal}, shutting down.`);
     if (timer) clearInterval(timer);
+    if (summaryTimer) clearInterval(summaryTimer);
     void client.destroy().finally(() => process.exit(0));
   };
   process.once("SIGINT", () => shutdown("SIGINT"));

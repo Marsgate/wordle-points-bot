@@ -8,7 +8,14 @@ import {
   type Role,
   type TextChannel,
 } from "discord.js";
-import type { Logger, MemberPort, SpoilerPort } from "../services/ports.js";
+import type {
+  Logger,
+  MemberPort,
+  MemberSummary,
+  SpoilerPort,
+  SummaryMessage,
+  SummarySourcePort,
+} from "../services/ports.js";
 
 /**
  * The member-facing surface: a personal points role per player, plus read/write
@@ -32,6 +39,29 @@ export class DiscordMemberPort implements MemberPort {
   async readNickname(userId: string): Promise<string | null> {
     const member = await (await this.requireGuild()).members.fetch(userId);
     return member.nickname;
+  }
+
+  async listMembers(): Promise<MemberSummary[]> {
+    const guild = await this.requireGuild();
+    const found: MemberSummary[] = [];
+    let after: string | undefined;
+
+    // REST listing, not gateway member-request (op 8), which rate limits hard.
+    for (let page = 0; page < 5; page += 1) {
+      const members = await guild.members.list({ limit: 1000, ...(after ? { after } : {}) });
+      for (const member of members.values()) {
+        found.push({
+          userId: member.id,
+          username: member.user.username,
+          nickname: member.nickname,
+          globalName: member.user.globalName ?? null,
+        });
+      }
+      if (members.size < 1000) break;
+      after = members.lastKey();
+    }
+
+    return found;
   }
 
   async syncRole(
@@ -153,5 +183,48 @@ export class DiscordSpoilerPort implements SpoilerPort {
       { ViewChannel: false },
       { reason: "Wordle spoiler channel: locked until you finish the day's puzzle" },
     );
+  }
+}
+
+/** Reads the Activity's summary messages, live or by scanning history. */
+export class DiscordSummarySource implements SummarySourcePort {
+  constructor(
+    private readonly client: Client,
+    private readonly guildId: () => string | null,
+  ) {}
+
+  private async requireGuild(): Promise<Guild> {
+    const id = this.guildId();
+    if (!id) throw new Error("no guild configured");
+    const cached = this.client.guilds.cache.get(id);
+    if (cached) return cached;
+    return this.client.guilds.fetch(id);
+  }
+
+  async listTextChannelIds(): Promise<string[]> {
+    const guild = await this.requireGuild();
+    return guild.channels.cache
+      .filter(
+        (channel) =>
+          (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) &&
+          channel.viewable,
+      )
+      .map((channel) => channel.id);
+  }
+
+  async fetchRecentMessages(channelId: string, limit: number): Promise<SummaryMessage[]> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement)) {
+      return [];
+    }
+
+    const messages = await channel.messages.fetch({ limit });
+    return [...messages.values()].map((message) => ({
+      id: message.id,
+      content: message.content,
+      authorIsBot: message.author.bot,
+      createdAt: message.createdAt,
+      channelId,
+    }));
   }
 }

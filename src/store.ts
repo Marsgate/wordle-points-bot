@@ -18,6 +18,8 @@ export interface DayRecord {
   points: Record<string, number>;
   finalized: boolean;
   finalizedAt?: string;
+  /** Message id of the Activity summary that was applied, for dedupe. */
+  summaryMessageId?: string;
 }
 
 export interface PlayerRecord {
@@ -40,6 +42,8 @@ export interface GuildConfig {
   lastResetDay: string | null;
   /** Streak carried over from before the bot, null when not set. */
   streakSeed: StreakSeed | null;
+  /** Channels where an Activity summary has been seen; polled for new ones. */
+  summaryChannelIds: string[];
 }
 
 export interface StoreData {
@@ -58,6 +62,7 @@ export function emptyData(timeZone: string): StoreData {
       timeZone,
       lastResetDay: null,
       streakSeed: null,
+      summaryChannelIds: [],
     },
     players: {},
     days: {},
