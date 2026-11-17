@@ -8,7 +8,7 @@ import { DailyService } from "./services/daily.js";
 import { DisplayService } from "./services/display.js";
 import { ResultsService } from "./services/results.js";
 import { DiscordMemberPort, DiscordSpoilerPort } from "./discord/adapters.js";
-import { registerCommands } from "./discord/commands.js";
+import { registerCommands, registerGuildCommands } from "./discord/commands.js";
 import { attachEvents } from "./discord/events.js";
 
 const TICK_MS = 30_000;
@@ -124,6 +124,14 @@ async function main(): Promise<void> {
 
       timer = setInterval(() => void tick(), TICK_MS);
     })();
+  });
+
+  // A newly joined server gets its commands immediately, so it can be set up
+  // without editing the environment or waiting for a global rollout.
+  client.on(Events.GuildCreate, (guild) => {
+    void registerGuildCommands(guild, logger).catch((error: unknown) => {
+      logger.warn(`Could not register commands in ${guild.name}`, error);
+    });
   });
 
   const shutdown = (signal: string): void => {

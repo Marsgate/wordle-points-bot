@@ -5,6 +5,7 @@ import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
   type Client,
+  type Guild,
 } from "discord.js";
 import { runCommand, type CommandContext, type CommandDeps, type CommandOptions } from "../commands/handlers.js";
 import type { Logger } from "../services/ports.js";
@@ -71,6 +72,13 @@ export const commandDefinitions = [
   ),
 ].map((command) => command.toJSON());
 
+/** Register the command set in one guild. Used at startup and on join. */
+export async function registerGuildCommands(guild: Guild, logger: Logger): Promise<void> {
+  const registered = await guild.commands.set(commandDefinitions);
+  const names = [...registered.values()].map((command) => command.name).join(", ");
+  logger.info(`Registered ${registered.size} slash commands in guild ${guild.name}: ${names}`);
+}
+
 /** Global commands take up to an hour to appear; a guild id makes them instant. */
 export async function registerCommands(client: Client, guildId: string | null, logger: Logger): Promise<void> {
   const application = client.application;
@@ -78,9 +86,7 @@ export async function registerCommands(client: Client, guildId: string | null, l
 
   if (guildId) {
     const guild = await client.guilds.fetch(guildId);
-    const registered = await guild.commands.set(commandDefinitions);
-    const names = [...registered.values()].map((command) => command.name).join(", ");
-    logger.info(`Registered ${registered.size} slash commands in guild ${guild.name}: ${names}`);
+    await registerGuildCommands(guild, logger);
     return;
   }
 
