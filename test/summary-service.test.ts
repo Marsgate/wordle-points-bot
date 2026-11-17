@@ -104,6 +104,18 @@ describe("SummaryService", () => {
     expect(h.store.config.streakSeed).toEqual({ day: "2026-11-16", count: 12 });
   });
 
+  it("ignores summaries from before the bot was set up", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.startedOn = "2026-11-16";
+
+    const applied = await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(applied).toBe(true);
+    expect(h.store.data.players["111"]?.total).toBe(0);
+    expect(h.store.data.days["2026-11-15"]?.summaryMessageId).toBe("sum-1");
+  });
+
   it("skips unregistered players", async () => {
     h = await harness();
     register(h, "111", "Ada");

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { join } from "node:path";
 import { Client, Events, GatewayIntentBits, PermissionFlagsBits } from "discord.js";
 import { loadEnv } from "./config.js";
+import { dayKey } from "./core/day.js";
 import { consoleLogger as logger } from "./logger.js";
 import { JsonStore } from "./store.js";
 import { DailyService } from "./services/daily.js";
@@ -104,6 +105,7 @@ async function main(): Promise<void> {
         const onlyGuild = ready.guilds.cache.first();
         if (onlyGuild) {
           store.config.guildId = onlyGuild.id;
+          store.config.startedOn ??= dayKey(new Date(), store.config.timeZone);
           await store.save();
           logger.info(`Using guild "${onlyGuild.name}" (${onlyGuild.id}); results count in every channel.`);
         }

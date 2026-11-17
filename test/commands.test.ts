@@ -42,6 +42,7 @@ describe("/wordle-setup", () => {
     expect(reply.content).toContain("counted in every channel");
     expect(h.store.config.spoilerChannelId).toBe("spoilers-new");
     expect(h.store.config.timeZone).toBe("America/Indianapolis");
+    expect(h.store.config.startedOn).toBe("2026-11-16");
     expect(h.spoilers.calls.lockdowns).toBe(1);
   });
 

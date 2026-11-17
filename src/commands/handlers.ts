@@ -130,6 +130,7 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
 
       const config = deps.store.config;
       config.guildId = ctx.guildId;
+      config.startedOn ??= dayKey(ctx.now, config.timeZone);
       config.spoilerChannelId = spoilers.id;
 
       let spoilerNote: string;

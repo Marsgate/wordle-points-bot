@@ -65,6 +65,18 @@ export class SummaryService {
     if (!summary) return false;
 
     const summaryDay = previousDayKey(dayKey(message.createdAt, this.deps.timeZone()));
+
+    // Days before the bot was set up were already part of any seeded totals;
+    // scoring them again would double-count.
+    const startedOn = this.deps.store.config.startedOn;
+    if (startedOn && summaryDay < startedOn) {
+      const day = this.deps.store.day(summaryDay);
+      day.summaryMessageId = message.id;
+      await this.deps.store.save();
+      this.deps.logger.info(`Summary for ${summaryDay} predates setup (${startedOn}); skipped.`);
+      return true;
+    }
+
     const day = this.deps.store.day(summaryDay);
 
     // The same message is seen by both the gateway and the poller.
