@@ -17,7 +17,6 @@ const INVITE_PERMISSIONS =
   PermissionFlagsBits.ViewChannel |
   PermissionFlagsBits.SendMessages |
   PermissionFlagsBits.ReadMessageHistory |
-  PermissionFlagsBits.ManageNicknames |
   PermissionFlagsBits.ManageRoles;
 
 let timer: NodeJS.Timeout | null = null;

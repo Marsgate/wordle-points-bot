@@ -111,10 +111,10 @@ TZ=America/Indianapolis  # day boundary, read on first run
 ```
 
 Invite the bot with the `bot` and `applications.commands` scopes and permission integer
-`402721792` (View Channels, Send Messages, Read Message History, Manage Roles):
+`268504064` (View Channels, Send Messages, Read Message History, Manage Roles):
 
 ```
-https://discord.com/api/oauth2/authorize?client_id=YOUR_APP_ID&permissions=402721792&scope=bot%20applications.commands
+https://discord.com/api/oauth2/authorize?client_id=YOUR_APP_ID&permissions=268504064&scope=bot%20applications.commands
 ```
 
 Run it:
