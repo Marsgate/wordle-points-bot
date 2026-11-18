@@ -48,6 +48,6 @@ export async function registerMember(deps: RegistrationDeps, input: Registration
   return [
     `**Registered** with **${formatPoints(total)} points**.${note}`,
     "Remove any points text from your nickname yourself — I never edit names.",
-    "Your shares now count toward the daily prize.",
+    "Your results now count toward the daily prize.",
   ].join("\n");
 }

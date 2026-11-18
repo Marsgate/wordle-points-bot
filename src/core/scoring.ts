@@ -1,7 +1,7 @@
 /** Points handed to first place each day. */
 export const DAILY_PRIZE = 10;
 
-/** Floor for a single player's share, so a big tie still awards something. */
+/** Floor for a single player's award, so a big tie still awards something. */
 export const MIN_SHARE = 0.5;
 
 export interface ScoredEntry {
@@ -45,7 +45,7 @@ export function splitPrize(winners: number, prize: number = DAILY_PRIZE): number
 
 /**
  * Rank one day's entries. Only solvers can win: an X/6 player is "finished"
- * for spoiler purposes but never takes first place.
+ * but never takes first place.
  */
 export function scoreDay(entries: Iterable<ScoredEntry>, prize: number = DAILY_PRIZE): DayScore {
   const all = [...entries];

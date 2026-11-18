@@ -18,7 +18,6 @@ import type { CommandContext, CommandOptions } from "../src/commands/handlers.js
 export const silentLogger: Logger = { info: () => {}, warn: () => {}, error: () => {} };
 
 export const GUILD = "guild-1";
-export const WORDLE_CHANNEL = "chan-wordle";
 export const TZ = "America/Indianapolis";
 
 export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
@@ -116,7 +115,6 @@ export function recordResult(
     userId,
     guesses,
     solved,
-    puzzleNumber: null,
     messageId: "test",
     recordedAt: at,
   };
@@ -204,14 +202,12 @@ export function options(values: {
 }): CommandOptions {
   return {
     getString: (name) => (name === "scope" ? (values.scope ?? null) : null),
-    getBoolean: () => null,
     getNumber: (name) => {
       if (name === "points") return values.points ?? null;
       if (name === "count") return values.count ?? null;
       return null;
     },
     getUser: (name) => (name === "user" ? (values.user ?? null) : null),
-    getChannel: () => null,
   };
 }
 

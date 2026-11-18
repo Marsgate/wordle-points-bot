@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { runCommand, type CommandDeps } from "../src/commands/handlers.js";
-import { context, GUILD, harness, options, recordResult, type Harness } from "./helpers.js";
+import { context, harness, options, recordResult, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -27,7 +27,7 @@ describe("/wordle-leaderboard", () => {
   it("says so when the day is empty", async () => {
     h = await harness();
     const reply = await runCommand("wordle-leaderboard", context({ options: options({ scope: "today" }) }), deps(h));
-    expect(reply.content).toContain("No shares recorded yet today");
+    expect(reply.content).toContain("No results for today yet");
     expect(reply.ephemeral).toBe(false);
   });
 

@@ -11,7 +11,7 @@ export function isValidTimeZone(timeZone: string): boolean {
 
 /**
  * The local calendar date ("YYYY-MM-DD") at `date` in `timeZone`. This is the
- * "Wordle day" key used for scoring, spoiler access and rollover.
+ * "Wordle day" key used for scoring and rollover.
  */
 export function dayKey(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {

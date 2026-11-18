@@ -20,12 +20,11 @@ function rank(entry: { guesses: number; solved: boolean }): number {
  * Applies the Wordle Activity's daily summary to the day it describes.
  *
  * The summary is yesterday's results, posted the next morning, so this runs
- * after that day was closed: it reopens the day, merges the scores (keeping the
- * better of a share and the summary), and closes it again. Only registered
- * members are scored.
+ * after that day was closed: it reopens the day, merges the scores, and
+ * closes it again. Only registered members are scored.
  *
  * The streak is the server's own count. The highest group streak reported
- * around setup becomes the starting line; once locked, later Activity numbers
+ * around startup becomes the starting line; once locked, later Activity numbers
  * are ignored and the bot simply counts days with a winner.
  */
 export class SummaryService {
@@ -97,7 +96,7 @@ export class SummaryService {
 
     // Days before the bot was set up were already part of any seeded totals;
     // scoring them again would double-count. They still count towards the
-    // starting streak, which is the highest group streak around setup.
+    // starting streak, which is the highest group streak around startup.
     const startedOn = config.startedOn;
     if (startedOn && summaryDay < startedOn) {
       this.updateBaseline(summary.streak, summaryDay);
@@ -135,7 +134,6 @@ export class SummaryService {
         userId: entry.userId,
         guesses: entry.guesses,
         solved: entry.solved,
-        puzzleNumber: null,
         messageId: message.id,
         recordedAt: message.createdAt.toISOString(),
       };
@@ -144,10 +142,6 @@ export class SummaryService {
 
     day.summaryMessageId = message.id;
     this.updateBaseline(summary.streak, summaryDay);
-
-    if (!this.deps.store.config.summaryChannelIds.includes(message.channelId)) {
-      this.deps.store.config.summaryChannelIds.push(message.channelId);
-    }
 
     // Re-close the day with the summary's data merged in.
     if (day.finalized) await this.deps.daily.reopenDay(summaryDay);

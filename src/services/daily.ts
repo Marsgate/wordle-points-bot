@@ -5,7 +5,6 @@ import type { DisplayService } from "./display.js";
 import type { Logger } from "./ports.js";
 
 export interface FinalizeReport {
-  day: string;
   skipped: boolean;
   winners: Winner[];
   /** Players whose points role was created or updated. */
@@ -14,15 +13,14 @@ export interface FinalizeReport {
 }
 
 export interface RolloverReport {
-  today: string;
   finalized: string[];
 }
 
 /**
- * Closes days: commits the prize to the winners' all-time totals, refreshes
- * their personal role, and re-locks the spoiler channel for the new day.
+ * Closes days: commits the prize to the winners' all-time totals and
+ * refreshes their personal role.
  *
- * Points are committed at rollover rather than on every share so a day's
+ * Points are committed at rollover rather than on every result so a day's
  * ranking is stable and roles are not rewritten each time someone else plays.
  */
 export class DailyService {
@@ -39,7 +37,7 @@ export class DailyService {
   ) {}
 
   async finalizeDay(key: string): Promise<FinalizeReport> {
-    const empty: FinalizeReport = { day: key, skipped: true, winners: [], updated: [], failures: [] };
+    const empty: FinalizeReport = { skipped: true, winners: [], updated: [], failures: [] };
 
     const day = this.deps.store.data.days[key];
     if (!day || day.finalized || this.finalizing.has(key)) return empty;
@@ -81,7 +79,7 @@ export class DailyService {
           `${updated.length} points role(s) synced.`,
       );
 
-      return { day: key, skipped: false, winners: score.winners, updated, failures };
+      return { skipped: false, winners: score.winners, updated, failures };
     } finally {
       this.finalizing.delete(key);
     }
@@ -97,7 +95,7 @@ export class DailyService {
       if (!report.skipped) finalized.push(key);
     }
 
-    return { today, finalized };
+    return { finalized };
   }
 
   /**
@@ -139,7 +137,8 @@ export class DailyService {
     return { reopened: true, reverted };
   }
 
-  /** Re-apply roles from stored totals, e.g. after a manual correction or rename. */  async resync(): Promise<{
+  /** Re-apply roles from stored totals, e.g. after a manual correction or a restore. */
+  async resync(): Promise<{
     updated: string[];
     failures: Array<{ userId: string; reason: string }>;
   }> {

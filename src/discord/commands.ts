@@ -94,17 +94,10 @@ export async function registerCommands(
 function readOptions(interaction: ChatInputCommandInteraction): CommandOptions {
   return {
     getString: (name) => interaction.options.getString(name),
-    getBoolean: (name) => interaction.options.getBoolean(name),
     getNumber: (name) => interaction.options.getNumber(name),
     getUser: (name) => {
       const user = interaction.options.getUser(name);
       return user ? { id: user.id, name: user.username } : null;
-    },
-    getChannel: (name) => {
-      const channel = interaction.options.getChannel(name);
-      if (!channel) return null;
-      const named = channel as { id: string; name?: string };
-      return { id: named.id, name: named.name ?? named.id };
     },
   };
 }

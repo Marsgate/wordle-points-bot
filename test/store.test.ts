@@ -35,7 +35,6 @@ describe("JsonStore", () => {
       userId: "user-1",
       guesses: 3,
       solved: true,
-      puzzleNumber: 1512,
       messageId: "m1",
       recordedAt: "2026-11-16T14:00:00.000Z",
     };

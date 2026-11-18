@@ -6,7 +6,6 @@ export interface StoredEntry {
   userId: string;
   guesses: number;
   solved: boolean;
-  puzzleNumber: number | null;
   messageId: string;
   recordedAt: string;
 }
@@ -39,8 +38,6 @@ export interface GuildConfig {
   timeZone: string;
   /** Streak carried over from before the bot, null when not set. */
   streakSeed: StreakSeed | null;
-  /** Channels where an Activity summary has been seen; polled for new ones. */
-  summaryChannelIds: string[];
   /** True once the starting streak has been chosen; later reports cannot move it. */
   streakFrozen: boolean;
   /** Local day the bot was first set up; earlier summaries are ignored. */
@@ -63,7 +60,6 @@ export function emptyData(timeZone: string): StoreData {
       guildId: null,
       timeZone,
       streakSeed: null,
-      summaryChannelIds: [],
       streakFrozen: false,
       startedOn: null,
       ignoredSummaryIds: [],
@@ -86,12 +82,10 @@ export class JsonStore {
   readonly filePath: string;
   private state: StoreData;
   private writeQueue: Promise<void> = Promise.resolve();
-  private readonly onWarning: (message: string) => void;
 
-  private constructor(filePath: string, state: StoreData, onWarning: (message: string) => void) {
+  private constructor(filePath: string, state: StoreData) {
     this.filePath = filePath;
     this.state = state;
-    this.onWarning = onWarning;
   }
 
   static async open(
@@ -119,7 +113,7 @@ export class JsonStore {
       }
     }
 
-    if (!loaded) return new JsonStore(filePath, defaults, onWarning);
+    if (!loaded) return new JsonStore(filePath, defaults);
 
     const merged: StoreData = {
       ...defaults,
@@ -129,7 +123,7 @@ export class JsonStore {
       players: { ...(loaded.players ?? {}) },
       days: { ...(loaded.days ?? {}) },
     };
-    return new JsonStore(filePath, merged, onWarning);
+    return new JsonStore(filePath, merged);
   }
 
   get data(): StoreData {

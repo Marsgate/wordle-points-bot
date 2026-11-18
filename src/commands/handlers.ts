@@ -9,10 +9,8 @@ import { registerMember } from "../services/registration.js";
 
 export interface CommandOptions {
   getString(name: string): string | null;
-  getBoolean(name: string): boolean | null;
   getNumber(name: string): number | null;
   getUser(name: string): { id: string; name: string } | null;
-  getChannel(name: string): { id: string; name: string } | null;
 }
 
 export interface CommandContext {
@@ -80,7 +78,7 @@ function leaderboardToday(store: JsonStore, now: Date): CommandReply {
 
   if (!day || Object.keys(day.entries).length === 0) {
     return visible(
-      `**Wordle — ${formatDayLabel(key, tz)}**\nNo shares recorded yet today. Post your Wordle result in any channel to enter.`,
+      `**Wordle — ${formatDayLabel(key, tz)}**\nNo results for today yet. They arrive with the next Activity summary.`,
     );
   }
 
@@ -303,8 +301,4 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
     default:
       return ephemeral(`Unknown command: \`${name}\`.`);
   }
-}
-
-function mentionChannel(channelId: string): string {
-  return `<#${channelId}>`;
 }

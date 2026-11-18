@@ -13,7 +13,7 @@ describe("looksLikeWordleSummary", () => {
     expect(looksLikeWordleSummary(REAL)).toBe(true);
   });
 
-  it("rejects ordinary shares and chat", () => {
+  it("rejects ordinary chat messages", () => {
     expect(looksLikeWordleSummary("Wordle 1,977 3/6\n\n🟩🟩🟩🟩🟩")).toBe(false);
     expect(looksLikeWordleSummary("we hit a 3 day streak!")).toBe(false);
   });

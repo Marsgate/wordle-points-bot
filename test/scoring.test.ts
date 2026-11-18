@@ -25,7 +25,7 @@ describe("splitPrize", () => {
     expect(splitPrize(9)).toBe(1);
   });
 
-  it("never rounds a share below half a point", () => {
+  it("never rounds an award below half a point", () => {
     expect(splitPrize(40)).toBe(0.5); // 0.25 would round to 0
   });
 

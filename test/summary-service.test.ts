@@ -216,6 +216,5 @@ describe("SummaryService", () => {
     expect(await h.summary.poll()).toBeCloseTo(1);
     expect(await h.summary.poll()).toBe(0);
     expect(h.store.data.players["111"]?.total).toBe(10);
-    expect(h.store.config.summaryChannelIds).toContain("chan-wordle");
   });
 });

@@ -1,4 +1,4 @@
-import { dayKey, isValidTimeZone } from "./core/day.js";
+import { isValidTimeZone } from "./core/day.js";
 
 export interface AppConfig {
   token: string;
@@ -33,9 +33,4 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): AppConfig {
     timeZone,
     debugTools: /^(1|true|yes|on)$/i.test(env.DEBUG_TOOLS?.trim() ?? ""),
   };
-}
-
-/** Small helper used in logs: which day does the bot think it is? */
-export function describeDay(timeZone: string, now: Date = new Date()): string {
-  return `${dayKey(now, timeZone)} (${timeZone})`;
 }

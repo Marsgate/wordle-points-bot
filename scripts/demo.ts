@@ -30,7 +30,6 @@ const nicknames = new Map<string, string>([
   ["444", "Margaret"],
 ]);
 const roles = new Map<string, { name: string; color: number; members: Set<string> }>();
-const sent: string[] = [];
 let roleSequence = 0;
 
 const memberPort: MemberPort = {
@@ -74,9 +73,7 @@ const memberPort: MemberPort = {
 
 
 const notifier: NotifierPort = {
-  send: async (_channelId, content) => {
-    sent.push(content);
-  },
+  send: async () => {},
 };
 
 const summarySource = {

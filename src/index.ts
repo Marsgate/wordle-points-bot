@@ -92,7 +92,7 @@ async function main(): Promise<void> {
 
       if (!client.options.intents.has(GatewayIntentBits.MessageContent)) {
         logger.warn(
-          "The Message Content intent is disabled, so shares cannot be read. Enable it in the Developer Portal → Bot.",
+          "The Message Content intent is disabled, so Activity summaries cannot be read. Enable it in the Developer Portal → Bot.",
         );
       }
 

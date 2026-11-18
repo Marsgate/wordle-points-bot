@@ -18,10 +18,6 @@ async function post(
   recordResult(test, userId, guesses, solved, at);
 }
 
-function roleNamed(test: Harness, name: string) {
-  return [...test.members.roles.values()].find((role) => role.name === name);
-}
-
 describe("two days end to end", () => {
   it("scores and syncs roles across two days", async () => {
     h = await harness({
