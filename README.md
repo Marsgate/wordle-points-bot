@@ -59,7 +59,8 @@ The bot never reads points from names and never edits nicknames.
   better score posted in another channel takes the prize. New Wordle channels are
   discovered by scanning all readable text channels.
 - Only **registered** members are scored. Unregistered players in the summary are ignored,
-  so they never take the prize.
+  so they never take the prize — they get pinged in that channel instead, with a
+  **Register** button that opens a short form for their current total.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
   6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out slightly
   more than 10 in total (a 3-way tie pays 10.5).

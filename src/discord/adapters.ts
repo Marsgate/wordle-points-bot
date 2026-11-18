@@ -1,9 +1,13 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   OverwriteType,
   PermissionFlagsBits,
   type Client,
   type Guild,
+  type MessageCreateOptions,
   type NewsChannel,
   type Role,
   type TextChannel,
@@ -185,12 +189,22 @@ export class DiscordSpoilerPort implements SpoilerPort {
 export class DiscordNotifierPort implements NotifierPort {
   constructor(private readonly client: Client) {}
 
-  async send(channelId: string, content: string): Promise<void> {
+  async send(channelId: string, content: string, button?: { label: string; customId: string }): Promise<void> {
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement)) {
       throw new Error(`channel ${channelId} is not a guild text channel`);
     }
-    await channel.send({ content, allowedMentions: { parse: [] } });
+
+    const payload: MessageCreateOptions = { content, allowedMentions: { parse: ["users"] } };
+    if (button) {
+      payload.components = [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId(button.customId).setLabel(button.label).setStyle(ButtonStyle.Primary),
+        ),
+      ];
+    }
+
+    await channel.send(payload);
   }
 }
 

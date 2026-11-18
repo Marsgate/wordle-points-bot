@@ -103,10 +103,14 @@ export function fakeSpoilers() {
 }
 
 export function fakeNotifier() {
-  const messages: Array<{ channelId: string; content: string }> = [];
+  const messages: Array<{
+    channelId: string;
+    content: string;
+    button?: { label: string; customId: string };
+  }> = [];
   const port: NotifierPort = {
-    send: async (channelId, content) => {
-      messages.push({ channelId, content });
+    send: async (channelId, content, button) => {
+      messages.push({ channelId, content, ...(button ? { button } : {}) });
     },
   };
   return { port, messages };

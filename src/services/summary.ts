@@ -119,8 +119,14 @@ export class SummaryService {
     const resolved = this.resolveEntries(summary.entries, members);
 
     let applied = 0;
+    const unregistered = new Set<string>();
+
     for (const entry of resolved) {
-      if (!this.deps.store.data.players[entry.userId]?.registered) continue;
+      const player = this.deps.store.data.players[entry.userId];
+      if (!player?.registered) {
+        unregistered.add(entry.userId);
+        continue;
+      }
 
       const existing = day.entries[entry.userId];
       if (existing && rank(existing) <= rank(entry)) continue;
@@ -173,6 +179,21 @@ export class SummaryService {
         } catch (error) {
           this.deps.logger.warn("Could not post the streak correction", error);
         }
+      }
+    }
+
+    // Ping anyone who finished but is not registered: their result was ignored.
+    if (unregistered.size > 0) {
+      const mentions = [...unregistered].map((id) => `<@${id}>`).join(", ");
+      try {
+        await this.deps.notifier.send(
+          message.channelId,
+          `${mentions} — you finished today's Wordle but are not registered, so it did not count.\n` +
+            "Tap **Register** or run `/wordle-register points:<your total>` (use `0` if you are new).",
+          { label: "Register", customId: "wordle-register" },
+        );
+      } catch (error) {
+        this.deps.logger.warn("Could not post the registration ping", error);
       }
     }
 

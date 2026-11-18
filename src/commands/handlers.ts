@@ -5,6 +5,7 @@ import { computeStreak, previousDayKey } from "../core/streak.js";
 import type { JsonStore } from "../store.js";
 import type { DailyService } from "../services/daily.js";
 import type { DisplayService } from "../services/display.js";
+import { registerMember } from "../services/registration.js";
 import type { SpoilerPort } from "../services/ports.js";
 
 export interface CommandOptions {
@@ -202,40 +203,11 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
     }
 
     case "wordle-register": {
-      const existing = deps.store.data.players[ctx.userId];
-      if (existing?.registered) {
-        return ephemeral(
-          `You are already registered with **${formatPoints(existing.total)} points**. ` +
-            "Ask an admin to use `/wordle-award` if that is wrong.",
-        );
-      }
-
-      const raw = ctx.options.getNumber("points");
-      if (raw === null || !Number.isFinite(raw)) {
-        return ephemeral("Enter your current point total — use `0` if you are starting fresh.");
-      }
-
-      const total = roundToHalf(raw);
-      const player = deps.store.player(ctx.userId, ctx.userName);
-      player.total = total;
-      player.registered = true;
-
-      // Every registered member has a role, including at exactly 0.
-      const applied = await deps.display.applyPoints(ctx.userId, total, player.roleId ?? null);
-      const note = applied.ok
-        ? ` Your role is \`${applied.roleName}\`.`
-        : ` (role not created: ${applied.reason})`;
-      if (applied.ok) player.roleId = applied.roleId;
-
-      await deps.store.save();
-
-      return ephemeral(
-        [
-          `**Registered** with **${formatPoints(total)} points**.${note}`,
-          "Remove any points text from your nickname yourself — I never edit names.",
-          "Your shares now count toward the daily prize.",
-        ].join("\n"),
+      const reply = await registerMember(
+        { store: deps.store, display: deps.display },
+        { userId: ctx.userId, userName: ctx.userName, points: ctx.options.getNumber("points") },
       );
+      return ephemeral(reply);
     }
 
     case "wordle-award": {

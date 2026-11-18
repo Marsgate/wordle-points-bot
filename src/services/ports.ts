@@ -34,8 +34,14 @@ export interface SpoilerPort {
   lockDown(): Promise<void>;
 }
 
+/** A single button attached to a bot message. */
+export interface NotifierButton {
+  label: string;
+  customId: string;
+}
+
 export interface NotifierPort {
-  send(channelId: string, content: string): Promise<void>;
+  send(channelId: string, content: string, button?: NotifierButton): Promise<void>;
 }
 
 export interface SummarySourcePort {

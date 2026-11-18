@@ -144,12 +144,12 @@ describe("SummaryService", () => {
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
 
-    expect(h.notifier.messages).toHaveLength(1);
-    expect(h.notifier.messages[0]?.channelId).toBe("chan-wordle");
-    expect(h.notifier.messages[0]?.content).toContain("**13**");
-    expect(h.notifier.messages[0]?.content).toContain("🤓☝️");
-    expect(h.notifier.messages[0]?.content).not.toContain("server-wide");
-    expect(h.notifier.messages[0]?.content).not.toContain("summary says");
+    const correction = h.notifier.messages.find((message) => message.content.includes("Um, actually"));
+    expect(correction?.channelId).toBe("chan-wordle");
+    expect(correction?.content).toContain("**13**");
+    expect(correction?.content).toContain("🤓☝️");
+    expect(correction?.content).not.toContain("server-wide");
+    expect(correction?.content).not.toContain("summary says");
   });
 
   it("stays quiet when the group number matches the server streak", async () => {
@@ -160,7 +160,20 @@ describe("SummaryService", () => {
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
 
-    expect(h.notifier.messages).toHaveLength(0);
+    expect(h.notifier.messages.some((message) => message.content.includes("Um, actually"))).toBe(false);
+  });
+
+  it("pings unregistered players who finished", async () => {
+    h = await harness({ nicknames: { "222": "Bob" } });
+    register(h, "111", "Ada");
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const ping = h.notifier.messages.find((message) => message.button?.customId === "wordle-register");
+    expect(ping?.content).toContain("<@222>");
+    expect(ping?.content).toContain("<@333>");
+    expect(ping?.content).toContain("/wordle-register");
+    expect(ping?.button).toEqual({ label: "Register", customId: "wordle-register" });
   });
 
   it("compares results across channels on the same day", async () => {
