@@ -55,6 +55,9 @@ The bot never reads points from names and never edits nicknames.
 - Your **best** share of the day counts: 5/6 followed by 3/6 keeps the 3/6.
 - Results come from two places: the share you post during the day, and the Activity's
   daily summary the next morning. They are merged per player, keeping the better score.
+- Results from every channel land on the same day record and are ranked together, so a
+  better score posted in another channel takes the prize. New Wordle channels are
+  discovered by scanning all readable text channels.
 - Only **registered** members are scored. Unregistered players in the summary are ignored,
   so they never take the prize.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,

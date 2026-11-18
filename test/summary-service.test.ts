@@ -163,6 +163,35 @@ describe("SummaryService", () => {
     expect(h.notifier.messages).toHaveLength(0);
   });
 
+  it("compares results across channels on the same day", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    register(h, "222", "Bob");
+
+    const summary = (id: string, channelId: string, scoreLine: string) => ({
+      id,
+      channelId,
+      authorIsBot: true,
+      createdAt: new Date("2026-11-16T11:55:00Z"),
+      content: `**Your group is on a 12 day streak!** Here are yesterday's results:\n${scoreLine}`,
+    });
+
+    // Ada solves in channel A first and takes the prize.
+    await h.summary.handleMessage(summary("sum-a", "chan-a", "3/6: <@111>"));
+    expect(h.store.data.players["111"]?.total).toBe(10);
+
+    // Bob beats her from channel B; the day is re-scored.
+    await h.summary.handleMessage(summary("sum-b", "chan-b", "2/6: <@222>"));
+
+    expect(h.store.data.days["2026-11-15"]?.points).toEqual({ "222": 10 });
+    expect(h.store.data.players["111"]?.total).toBe(0);
+    expect(h.store.data.players["222"]?.total).toBe(10);
+
+    const roleOf = (userId: string) => h?.members.roles.get(h.store.data.players[userId]?.roleId ?? "");
+    expect(roleOf("222")?.name).toBe("10 points");
+    expect(roleOf("111")?.name).toBe("0 points");
+  });
+
   it("ignores summaries from before the bot was set up", async () => {
     h = await harness();
     register(h, "111", "Ada");
@@ -172,7 +201,12 @@ describe("SummaryService", () => {
 
     expect(applied).toBe(true);
     expect(h.store.data.players["111"]?.total).toBe(0);
-    expect(h.store.data.days["2026-11-15"]?.summaryMessageId).toBe("sum-1");
+    expect(h.store.data.days["2026-11-15"]).toBeUndefined();
+    expect(h.store.config.ignoredSummaryIds).toContain("sum-1");
+    expect(h.store.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
+
+    // A rescan recognises it and stays quiet.
+    expect(await h.summary.handleMessage(SUMMARY_MESSAGE)).toBe(false);
   });
 
   it("skips unregistered players", async () => {

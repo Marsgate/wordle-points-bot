@@ -50,8 +50,10 @@ export class SummaryService {
   /** Scan recent history, in case the gateway does not deliver app messages. */
   async poll(): Promise<number> {
     const config = this.deps.store.config;
-    const known = config.summaryChannelIds ?? [];
-    const channels = known.length > 0 ? known : await this.deps.source.listTextChannelIds();
+
+    // Scan every readable channel, not just previously seen ones: a new Wordle
+    // channel must be discovered so its results join the same daily comparison.
+    const channels = await this.deps.source.listTextChannelIds();
 
     let processed = 0;
     for (const channelId of channels) {
@@ -88,22 +90,30 @@ export class SummaryService {
     if (!summary) return false;
 
     const summaryDay = previousDayKey(dayKey(message.createdAt, this.deps.timeZone()));
-    const day = this.deps.store.day(summaryDay);
+    const config = this.deps.store.config;
 
-    // The same message is seen by both the gateway and the poller.
-    if (day.summaryMessageId === message.id) return false;
+    // Already skipped as pre-install; do not rescan it.
+    if (config.ignoredSummaryIds.includes(message.id)) return false;
 
     // Days before the bot was set up were already part of any seeded totals;
     // scoring them again would double-count. They still count towards the
     // starting streak, which is the highest group streak around setup.
-    const startedOn = this.deps.store.config.startedOn;
+    const startedOn = config.startedOn;
     if (startedOn && summaryDay < startedOn) {
       this.updateBaseline(summary.streak, summaryDay);
-      day.summaryMessageId = message.id;
+      config.ignoredSummaryIds.push(message.id);
+      if (config.ignoredSummaryIds.length > 100) {
+        config.ignoredSummaryIds.splice(0, config.ignoredSummaryIds.length - 100);
+      }
       await this.deps.store.save();
       this.deps.logger.info(`Summary for ${summaryDay} predates setup (${startedOn}); skipped.`);
       return true;
     }
+
+    const day = this.deps.store.day(summaryDay);
+
+    // The same message is seen by both the gateway and the poller.
+    if (day.summaryMessageId === message.id) return false;
 
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);

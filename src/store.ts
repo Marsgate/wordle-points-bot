@@ -48,6 +48,8 @@ export interface GuildConfig {
   streakFrozen: boolean;
   /** Local day the bot was first set up; earlier summaries are ignored. */
   startedOn: string | null;
+  /** Summary message ids already skipped as pre-install, so rescans stay quiet. */
+  ignoredSummaryIds: string[];
 }
 
 export interface StoreData {
@@ -69,6 +71,7 @@ export function emptyData(timeZone: string): StoreData {
       summaryChannelIds: [],
       streakFrozen: false,
       startedOn: null,
+      ignoredSummaryIds: [],
     },
     players: {},
     days: {},
