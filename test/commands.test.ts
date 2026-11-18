@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { runCommand, type CommandDeps } from "../src/commands/handlers.js";
-import { context, GUILD, harness, incomingMessage, options, shareFor, type Harness } from "./helpers.js";
+import { context, GUILD, harness, options, recordResult, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -20,12 +20,7 @@ function deps(test: Harness): CommandDeps {
 }
 
 async function post(test: Harness, userId: string, guesses: number, solved = true): Promise<void> {
-  if (!test.store.data.players[userId]?.registered) {
-    test.store.player(userId, userId).registered = true;
-  }
-  await test.results.handle(
-    incomingMessage({ id: `msg-${userId}`, authorId: userId, authorName: userId, content: shareFor(guesses, solved) }),
-  );
+  recordResult(test, userId, guesses, solved);
 }
 
 describe("/wordle-setup", () => {
@@ -84,16 +79,18 @@ describe("/wordle-setup", () => {
 });
 
 describe("/wordle-status", () => {
-  it("shows the configured channels and today's count", async () => {
+  it("shows configuration, registrations and the streak", async () => {
     h = await harness();
-    await post(h, "user-1", 3);
+    h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
 
     const reply = await runCommand("wordle-status", context(), deps(h));
 
     expect(reply.content).toContain("<#chan-spoilers>");
     expect(reply.content).toContain("America/Indianapolis");
     expect(reply.content).toContain("Registered players: 1");
-    expect(reply.content).toContain("1 share recorded");
+    expect(reply.content).toContain("Activity's daily summary");
+    expect(reply.content).toContain("Streak: 12 days");
+    expect(reply.content).not.toContain("share");
   });
 });
 
@@ -240,7 +237,7 @@ describe("/wordle-award", () => {
 });
 
 describe("/wordle-unregister", () => {
-  it("lets members leave and stops scoring them", async () => {
+  it("lets members leave and stops summarised results counting", async () => {
     h = await harness();
     await post(h, "user-1", 3);
 
@@ -248,11 +245,6 @@ describe("/wordle-unregister", () => {
 
     expect(reply.content).toContain("Unregistered");
     expect(h.store.data.players["user-1"]?.registered).toBe(false);
-
-    const outcome = await h.results.handle(
-      incomingMessage({ id: "after", authorId: "user-1", content: shareFor(2) }),
-    );
-    expect(outcome).toMatchObject({ kind: "ignored", reason: "unregistered" });
   });
 
   it("requires an admin to unregister someone else", async () => {

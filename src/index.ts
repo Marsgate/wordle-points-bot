@@ -7,7 +7,6 @@ import { consoleLogger as logger } from "./logger.js";
 import { JsonStore } from "./store.js";
 import { DailyService } from "./services/daily.js";
 import { DisplayService } from "./services/display.js";
-import { ResultsService } from "./services/results.js";
 import { SummaryService } from "./services/summary.js";
 import { DiscordMemberPort, DiscordNotifierPort, DiscordSpoilerPort, DiscordSummarySource } from "./discord/adapters.js";
 import { registerCommands, registerGuildCommands } from "./discord/commands.js";
@@ -56,7 +55,6 @@ async function main(): Promise<void> {
     timeZone: () => store.config.timeZone,
     now: () => new Date(),
   });
-  const results = new ResultsService({ store, spoilers, logger });
   const notifier = new DiscordNotifierPort(client);
   const summary = new SummaryService({
     store,
@@ -69,7 +67,6 @@ async function main(): Promise<void> {
   });
 
   attachEvents(client, {
-    results,
     summary,
     logger,
     commands: { store, daily, display, spoilers, now: () => new Date() },

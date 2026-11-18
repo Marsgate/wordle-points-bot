@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { harness, incomingMessage, shareFor, type Harness } from "./helpers.js";
+import { harness, recordResult, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -15,18 +15,8 @@ async function post(
   solved = true,
   at = "2026-11-16T14:00:00Z",
 ): Promise<void> {
-  if (!test.store.data.players[userId]?.registered) {
-    test.store.player(userId, userId).registered = true;
-  }
-  await test.results.handle(
-    incomingMessage({
-      id: `msg-${userId}-${at}`,
-      authorId: userId,
-      authorName: userId,
-      content: shareFor(guesses, solved),
-      createdAt: new Date(at),
-    }),
-  );
+  recordResult(test, userId, guesses, solved, at);
+  await test.spoilers.port.grant(userId);
 }
 
 function roleNamed(test: Harness, name: string) {

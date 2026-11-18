@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { harness, shareFor, incomingMessage, type Harness } from "./helpers.js";
+import { harness, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -65,30 +65,6 @@ describe("SummaryService", () => {
     expect(await h.summary.handleMessage(SUMMARY_MESSAGE)).toBe(true);
     expect(await h.summary.handleMessage(SUMMARY_MESSAGE)).toBe(false);
     expect(h.store.data.players["111"]?.total).toBe(10);
-  });
-
-  it("keeps the better of a share and the summary", async () => {
-    h = await harness({ nicknames: { "111": "Ada" } });
-    register(h, "111", "Ada");
-    // A 5/6 share for the same day, already closed.
-    await h.results.handle(
-      incomingMessage({
-        id: "share-1",
-        authorId: "111",
-        authorName: "Ada",
-        content: shareFor(5),
-        createdAt: new Date("2026-11-15T14:00:00Z"),
-      }),
-    );
-    await h.daily.finalizeDay("2026-11-15");
-    expect(h.store.data.players["111"]?.total).toBe(10);
-
-    // The summary says 3/6, which is better.
-    await h.summary.handleMessage(SUMMARY_MESSAGE);
-
-    expect(h.store.data.days["2026-11-15"]?.entries["111"]?.guesses).toBe(3);
-    expect(h.store.data.players["111"]?.total).toBe(10);
-    expect(h.store.data.days["2026-11-15"]?.points).toEqual({ "111": 10 });
   });
 
   it("never lets an older summary overwrite a newer streak", async () => {

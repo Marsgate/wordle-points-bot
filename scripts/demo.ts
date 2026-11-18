@@ -1,7 +1,6 @@
 /**
- * Offline simulation of one Wordle day. No Discord connection, no token:
- * the same services the bot uses are wired to in-memory ports, so the output
- * shows exactly what would happen in a real server.
+ * Offline simulation of one Activity summary. No Discord connection, no token:
+ * the same services the bot uses are wired to in-memory ports.
  *
  *   npm run demo
  */
@@ -10,14 +9,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DailyService } from "../src/services/daily.js";
 import { DisplayService } from "../src/services/display.js";
-import { ResultsService } from "../src/services/results.js";
-import type { Logger, MemberPort, SpoilerPort } from "../src/services/ports.js";
+import { registerMember } from "../src/services/registration.js";
+import { SummaryService } from "../src/services/summary.js";
+import type { Logger, MemberPort, NotifierPort, SpoilerPort } from "../src/services/ports.js";
 import { JsonStore } from "../src/store.js";
 
 const TZ = "America/Indianapolis";
-const WORDLE_CHANNEL = "wordle";
-const SPOILER_CHANNEL = "wordle-spoilers";
-const GOSSIP_CHANNEL = "general";
+const GUILD = "guild-1";
 
 const logger: Logger = {
   info: (message) => console.log(`   · ${message}`),
@@ -26,13 +24,14 @@ const logger: Logger = {
 };
 
 const nicknames = new Map<string, string>([
-  ["u-ada", "𝓐𝓭𝓪 ✦"],
-  ["u-grace", "grace"],
-  ["u-linus", "Linus 🐧 · 3.5"],
-  ["u-margaret", "Margaret Hamilton"],
+  ["111", "Ada ✦"],
+  ["222", "Grace"],
+  ["333", "Linus 🐧"],
+  ["444", "Margaret"],
 ]);
 const roles = new Map<string, { name: string; color: number; members: Set<string> }>();
 const spoilerAccess = new Set<string>();
+const sent: string[] = [];
 let roleSequence = 0;
 
 const memberPort: MemberPort = {
@@ -86,116 +85,100 @@ const spoilerPort: SpoilerPort = {
   lockDown: async () => {},
 };
 
-const SHARES: Array<{ authorId: string; authorName: string; channelId: string; content: string; at: string }> = [
-  {
-    authorId: "u-ada",
-    authorName: "ada",
-    channelId: WORDLE_CHANNEL,
-    at: "2026-11-16T14:05:00Z",
-    content: ["Wordle 1,512 3/6*", "", "⬛🟨⬛⬛⬛", "⬛🟩🟩🟨⬛", "🟩🟩🟩🟩🟩"].join("\n"),
+const notifier: NotifierPort = {
+  send: async (_channelId, content) => {
+    sent.push(content);
   },
-  {
-    authorId: "u-grace",
-    authorName: "grace",
-    channelId: WORDLE_CHANNEL,
-    at: "2026-11-16T14:12:00Z",
-    content: ["Wordle 1,512 3/6", "", "⬛⬛🟨⬛⬛", "🟨🟩⬛🟩⬛", "🟩🟩🟩🟩🟩"].join("\n"),
-  },
-  {
-    authorId: "u-linus",
-    authorName: "linus",
-    channelId: WORDLE_CHANNEL,
-    at: "2026-11-16T14:20:00Z",
-    content: ["||Wordle 1,512 3/6||", "||⬛🟨⬛⬛⬛||", "||⬛⬛🟩🟨⬛||", "||🟩🟩🟩🟩🟩||"].join("\n"),
-  },
-  {
-    authorId: "u-margaret",
-    authorName: "margaret",
-    channelId: GOSSIP_CHANNEL,
-    at: "2026-11-16T15:00:00Z",
-    content: ["Wordle 1,512 5/6", "", "⬛⬛🟨⬛⬛", "⬛🟨⬛⬛⬛", "🟨⬛⬛🟨⬛", "⬛⬛🟨⬛⬛", "🟩🟩🟩🟩🟩"].join("\n"),
-  },
-];
+};
+
+const summarySource = {
+  listTextChannelIds: async () => ["plains"],
+  fetchRecentMessages: async () => [],
+};
 
 function banner(title: string): void {
   console.log(`\n=== ${title} ===`);
-}
-
-function colorName(color: number): string {
-  if (color === 0xfee75c) return "gold";
-  if (color === 0x5865f2) return "blue";
-  if (color === 0x57f287) return "green";
-  return "grey";
 }
 
 async function main(): Promise<void> {
   const dir = await mkdtemp(join(tmpdir(), "wordle-demo-"));
   try {
     const store = await JsonStore.open(join(dir, "store.json"), TZ);
-    store.config.guildId = "guild-1";
-    store.config.spoilerChannelId = SPOILER_CHANNEL;
-
-    // Everyone registers with their current total before shares count.
-    for (const share of SHARES) {
-      store.player(share.authorId, share.authorName).registered = true;
-    }
+    store.config.guildId = GUILD;
+    store.config.spoilerChannelId = "wordle-spoilers";
+    store.config.startedOn = "2026-11-16";
     await store.save();
 
     const display = new DisplayService({ port: memberPort, logger });
+
+    banner("Members register with the totals they are bringing in");
+    const starters: Array<[string, string, number]> = [
+      ["111", "ada", 0],
+      ["222", "grace", 0],
+      ["333", "linus", 3.5],
+      ["444", "margaret", -4],
+    ];
+    for (const [userId, name, points] of starters) {
+      const reply = await registerMember(
+        { store, display },
+        { userId, userName: name, points },
+      );
+      console.log(`   ${nicknames.get(userId)?.padEnd(12)} ${reply.split("\n")[0]?.replace(/\*\*/g, "")}`);
+    }
+
     const daily = new DailyService({
       store,
       display,
       spoilers: spoilerPort,
       logger,
       timeZone: () => store.config.timeZone,
-      now: () => new Date(),
+      now: () => new Date("2026-11-17T12:00:00Z"),
     });
-    const results = new ResultsService({ store, spoilers: spoilerPort, logger });
+    const summary = new SummaryService({
+      store,
+      daily,
+      members: memberPort,
+      source: summarySource,
+      notifier,
+      logger,
+      timeZone: () => store.config.timeZone,
+    });
 
-    banner("Monday: three people share 3/6 in #wordle, one shares 5/6 in #general");
-    for (const share of SHARES) {
-      const outcome = await results.handle({
-        id: `msg-${share.authorId}`,
-        guildId: "guild-1",
-        channelId: share.channelId,
-        authorId: share.authorId,
-        authorName: share.authorName,
-        authorIsBot: false,
-        content: share.content,
-        createdAt: new Date(share.at),
-      });
-      console.log(`   ${share.authorName.padEnd(9)} → ${outcome.kind} (posted in #${share.channelId})`);
-    }
+    banner("The Activity posts yesterday's summary in #plains");
+    const content = [
+      "**Your group is on a 103 day streak!** 🔥🔥🔥 Here are yesterday's results:",
+      "👑 4/6: <@111> <@222>",
+      "5/6: <@333>",
+      "X/6: <@444>",
+    ].join("\n");
+    console.log(content.replace(/^/gm, "   "));
 
-    banner("Spoiler channel access before midnight");
-    console.log(`   ${spoilerAccess.size} member(s): ${[...spoilerAccess].join(", ") || "nobody"}`);
-    console.log("   (Results count in every channel, so Margaret's #general share unlocked it too.)");
+    await summary.handleMessage({
+      id: "summary-1",
+      content,
+      authorIsBot: true,
+      createdAt: new Date("2026-11-17T11:55:00Z"),
+      channelId: "plains",
+    });
 
-    banner("Midnight rollover (America/Indianapolis)");
-    const report = await daily.rollover(new Date("2026-11-17T05:00:30Z"));
-    console.log(`   closed: ${report.finalized.join(", ") || "nothing"}`);
-    console.log(`   spoiler overwrites removed: ${report.spoilerMembersRevoked}`);
-
-    banner("Result for Wordle 1,512");
+    banner("Result for Wordle on Nov 16");
     const day = store.data.days["2026-11-16"];
     for (const [userId, entry] of Object.entries(day?.entries ?? {})) {
       const points = day?.points[userId] ?? 0;
       const result = entry.solved ? `${entry.guesses}/6` : "X/6";
-      console.log(`   ${userId.padEnd(11)} ${result.padEnd(4)} ${points > 0 ? `${points} pts` : "no points"}`);
+      console.log(`   ${userId.padEnd(5)} ${result.padEnd(4)} ${points > 0 ? `${points} pts` : "no points"}`);
     }
-    console.log("   (10 points split 3 ways = 3.5 each.)");
+    console.log("   (Ada and Grace tied at 4/6, so the 10 points split: 5 each.)");
 
-    banner("Personal points roles (one per member, coloured by total)");
+    banner("Roles");
     for (const [roleId, role] of roles) {
-      console.log(`   ${roleId.padEnd(7)} ${role.name.padEnd(26)} ${colorName(role.color).padEnd(6)} ${[...role.members].join(", ")}`);
+      console.log(`   ${roleId.padEnd(7)} ${role.name.padEnd(12)} ${[...role.members].join(", ")}`);
     }
 
-    banner("Nicknames after rollover (no longer edited)");
-    for (const [userId, nickname] of nicknames) console.log(`   ${userId.padEnd(11)} ${nickname}`);
-
-    banner("Next day");
-    console.log(`   spoiler access: ${spoilerAccess.size} member(s) — reset for the new puzzle`);
-    console.log(`   all-time: ${Object.values(store.data.players).map((p) => `${p.displayName}=${p.total}`).join(", ")}`);
+    banner("Streak");
+    const seed = store.config.streakSeed;
+    console.log(`   baseline ${seed?.count} through ${seed?.day} (read from the summary)`);
+    console.log(`   spoiled members: ${spoilerAccess.size} (no share step needed)`);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

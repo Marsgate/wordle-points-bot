@@ -10,10 +10,9 @@ import type {
   SummaryMessage,
   SummarySourcePort,
 } from "../src/services/ports.js";
-import type { IncomingMessage } from "../src/services/results.js";
+import { dayKey } from "../src/core/day.js";
 import { DailyService } from "../src/services/daily.js";
 import { DisplayService } from "../src/services/display.js";
-import { ResultsService } from "../src/services/results.js";
 import { SummaryService } from "../src/services/summary.js";
 import type { CommandContext, CommandOptions } from "../src/commands/handlers.js";
 
@@ -125,25 +124,25 @@ export function fakeSummarySource() {
   return { port, messagesByChannel };
 }
 
-/** Builds a valid share text for a given guess count. */export function shareFor(guesses: number, solved = true, puzzle = 1512): string {
-  const rows = Array.from({ length: guesses }, (_, index) =>
-    solved && index === guesses - 1 ? "🟩🟩🟩🟩🟩" : "⬛⬛⬛⬛⬛",
-  );
-  const header = `Wordle ${puzzle.toLocaleString("en-US")} ${solved ? guesses : "X"}/6`;
-  return [header, "", ...rows].join("\n");
-}
-
-export function incomingMessage(overrides: Partial<IncomingMessage> = {}): IncomingMessage {
-  return {
-    id: "msg-1",
-    guildId: GUILD,
-    channelId: WORDLE_CHANNEL,
-    authorId: "user-1",
-    authorName: "tester",
-    authorIsBot: false,
-    content: shareFor(3),
-    createdAt: new Date("2026-11-16T14:00:00Z"),
-    ...overrides,
+/** Writes a day entry directly, standing in for a processed summary. */
+export function recordResult(
+  test: Harness,
+  userId: string,
+  guesses: number,
+  solved = true,
+  at = "2026-11-16T14:00:00Z",
+): void {
+  if (!test.store.data.players[userId]?.registered) {
+    test.store.player(userId, userId).registered = true;
+  }
+  const day = dayKey(new Date(at), test.store.config.timeZone);
+  test.store.day(day).entries[userId] = {
+    userId,
+    guesses,
+    solved,
+    puzzleNumber: null,
+    messageId: "test",
+    recordedAt: at,
   };
 }
 
@@ -154,7 +153,6 @@ export interface Harness {
   spoilers: ReturnType<typeof fakeSpoilers>;
   display: DisplayService;
   daily: DailyService;
-  results: ResultsService;
   summary: SummaryService;
   summarySource: ReturnType<typeof fakeSummarySource>;
   notifier: ReturnType<typeof fakeNotifier>;
@@ -204,11 +202,6 @@ export async function harness(
     timeZone: () => store.config.timeZone,
     now,
   });
-  const results = new ResultsService({
-    store,
-    spoilers: spoilers.port,
-    logger: silentLogger,
-  });
   const summary = new SummaryService({
     store,
     daily,
@@ -226,7 +219,6 @@ export async function harness(
     spoilers,
     display,
     daily,
-    results,
     summary,
     summarySource,
     notifier,

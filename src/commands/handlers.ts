@@ -159,18 +159,22 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
 
     case "wordle-status": {
       const config = deps.store.config;
-      const key = dayKey(ctx.now, config.timeZone);
-      const day = deps.store.data.days[key];
-      const count = day ? Object.keys(day.entries).length : 0;
+      const today = dayKey(ctx.now, config.timeZone);
       const registered = Object.values(deps.store.data.players).filter((player) => player.registered).length;
+      const streak = computeStreak({
+        wonDays: wonDays(deps.store),
+        today,
+        seed: config.streakSeed,
+      });
+
       return ephemeral(
         [
           "**Wordle bot status**",
-          "Results: counted in every channel",
+          "Results: scored from the Activity's daily summary",
           `Spoiler channel: ${config.spoilerChannelId ? mentionChannel(config.spoilerChannelId) : "not set"}`,
           `Time zone: ${config.timeZone}`,
           `Registered players: ${registered}`,
-          `Today (${key}): ${plural(count, "share")} recorded`,
+          `Streak: ${streak.current} ${streak.current === 1 ? "day" : "days"} (best ${streak.best})`,
         ].join("\n"),
       );
     }

@@ -7,18 +7,14 @@ the scoreboard in a **personal role** named after the score (`13.5 points`), and
 ## The basics
 
 1. Register once with the total you are starting from: `/wordle-register points:0`
-2. Play `/wordle`, then `/share` (or paste the result) **in any channel**.
-3. At midnight, first place earns **10 points**. Ties split the prize, rounded to the
-   nearest half point — a 3-way tie pays 3.5 each.
-4. Your total lives in your personal role. It updates at the close of the day, and 0 or
+2. Play Wordle through Discord's `/wordle` Activity — that is the only source of results.
+3. Each morning the bot reads the Activity's **daily summary** for yesterday and awards
+   **10 points** to first place. Ties split the prize, rounded to the nearest half point —
+   a 3-way tie pays 3.5 each.
+4. Your total lives in your personal role. It updates when the summary is applied, and 0 or
    negative totals are normal — they get a role too.
 
-Finishing the puzzle (even with an X/6) unlocks `#wordle-spoilers` until the next
-midnight.
-
-The bot also reads the Activity's **daily summary** each morning. That summary lists every
-player's score, so registered members are scored even if they never post a share — shares
-are what unlock the spoiler channel during the day.
+The bot reads the Activity summary only; pasted share text is ignored.
 
 The server's **streak** — consecutive days with at least one solver — is tracked too;
 `/wordle-streak` reports it, and an admin can seed it with the number you had before the
@@ -37,27 +33,24 @@ The bot never reads points from names and never edits nicknames.
 | `/points [user:]` | Your total, wins, and today's standing |
 | `/wordle-leaderboard [scope:]` | Overall point totals by default, or today's ranking |
 | `/wordle-streak [count:]` | The server's day streak; admins can set it (0 clears) |
-| `/wordle-status` | Configuration, registered count, today's shares |
+| `/wordle-status` | Configuration, registered count and streak |
 
 **For admins**
 
 | Command | What it does |
 |---|---|
 | `/wordle-setup spoilers:` | Pick the channel that stays hidden until you finish |
-| `/wordle-close` | End today now and award points (later shares today do not count) |
-| `/wordle-reopen` | Undo a close and let later shares count again |
+| `/wordle-close` | End today now and award points (later results today do not count) |
+| `/wordle-reopen` | Undo a close and let later results count again |
 | `/wordle-award user: points:` | Correct a total; halves and negatives allowed |
 | `/wordle-resync` | Re-apply stored totals to roles (e.g. after a rename) |
 
 ## How points work
 
-- Only **solvers** place. An X/6 finishes the puzzle and unlocks spoilers but scores 0.
-- Your **best** share of the day counts: 5/6 followed by 3/6 keeps the 3/6.
-- Results come from two places: the share you post during the day, and the Activity's
-  daily summary the next morning. They are merged per player, keeping the better score.
-- Results from every channel land on the same day record and are ranked together, so a
-  better score posted in another channel takes the prize. New Wordle channels are
-  discovered by scanning all readable text channels.
+- Only **solvers** place. An X/6 finishes the puzzle but scores 0.
+- Results come from the Activity's **daily summary**, one per group/channel; they are
+  merged per day and ranked together, so a better score from another channel takes the
+  prize. New Wordle channels are discovered by scanning all readable text channels.
 - Only **registered** members are scored. Unregistered players in the summary are ignored,
   so they never take the prize — they get pinged in that channel instead, with a
   **Register** button that opens a short form for their current total.
@@ -91,8 +84,9 @@ The bot never reads points from names and never edits nicknames.
   needs no resync.
 - The role shows as a member's badge only if it is their highest role.
 - `/wordle-unregister` is the only thing that removes a role — not a zero total.
-- The spoiler channel is denied to `@everyone` and opened per member when their share is
-  recorded; it re-locks at the next midnight.
+- The spoiler channel is denied to `@everyone`. Because results now arrive with the next
+  morning's summary, there is no same-day unlock trigger; grant access manually if you
+  still use the channel.
 
 ---
 
@@ -153,10 +147,10 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 161 offline tests, no token or network needed
+npm test          # 138 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
-npm run demo      # simulated Wordle day, prints the whole flow
+npm run demo      # simulated Activity summary, prints the whole flow
 ```
 
 The core (`src/core`, `src/services`) never imports `discord.js`; the tests drive the real

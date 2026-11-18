@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { harness, incomingMessage, shareFor, type Harness } from "./helpers.js";
+import { harness, recordResult, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -15,18 +15,8 @@ async function post(
   solved: boolean,
   at: string,
 ): Promise<void> {
-  if (!test.store.data.players[userId]?.registered) {
-    test.store.player(userId, userId).registered = true;
-  }
-  await test.results.handle(
-    incomingMessage({
-      id: `msg-${userId}-${at}`,
-      authorId: userId,
-      authorName: userId,
-      content: shareFor(guesses, solved),
-      createdAt: new Date(at),
-    }),
-  );
+  recordResult(test, userId, guesses, solved, at);
+  await test.spoilers.port.grant(userId);
 }
 
 function roleNamed(test: Harness, name: string) {
@@ -91,23 +81,5 @@ describe("two days end to end", () => {
     expect(roleOf("u-ada")?.name).toBe("13.5 points");
     expect(roleOf("u-ada")?.members.has("u-ada")).toBe(true);
     expect(h.members.calls.renamed).toBe(1);
-  });
-
-  it("ignores an unregistered member but keeps their name untouched", async () => {
-    h = await harness({ nicknames: { "u-new": "Newcomer (-10 points)" } });
-    const outcome = await h.results.handle(
-      incomingMessage({
-        id: "msg-new",
-        authorId: "u-new",
-        authorName: "newcomer",
-        content: shareFor(3),
-        createdAt: new Date("2026-11-16T14:00:00Z"),
-      }),
-    );
-
-    expect(outcome).toMatchObject({ kind: "ignored", reason: "unregistered" });
-    expect(h.store.data.days["2026-11-16"]).toBeUndefined();
-    expect(h.members.nicknames.get("u-new")).toBe("Newcomer (-10 points)");
-    expect(h.members.roles.size).toBe(0);
   });
 });
