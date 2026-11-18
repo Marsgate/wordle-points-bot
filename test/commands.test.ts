@@ -347,24 +347,6 @@ describe("/wordle-reopen", () => {
   });
 });
 
-describe("/wordle-resync", () => {
-  it("re-applies every stored total as a role", async () => {
-    h = await harness({ nicknames: { "user-1": "Ada", "user-2": "Bob" } });
-    const ada = h.store.player("user-1", "Ada");
-    ada.total = 4;
-    const bob = h.store.player("user-2", "Bob");
-    bob.total = 1.5;
-    bob.registered = true;
-
-    const reply = await runCommand("wordle-resync", context(), deps(h));
-
-    expect(reply.content).toContain("Updated 2 points roles");
-    expect(h.members.roles.size).toBe(2);
-    const names = [...h.members.roles.values()].map((role) => role.name).sort();
-    expect(names).toEqual(["1.5 points", "4 points"]);
-  });
-});
-
 describe("/wordle-register", () => {
   it("sets the starting total and creates the role", async () => {
     h = await harness({ nicknames: { "user-9": "Nine ✦" } });

@@ -322,17 +322,6 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       );
     }
 
-    case "wordle-resync": {
-      if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to resync points roles.");
-
-      const report = await deps.daily.resync();
-      const parts = [`Updated ${plural(report.updated.length, "points role")}.`];
-      if (report.failures.length > 0) {
-        parts.push(`${plural(report.failures.length, "member")} could not be updated (they may outrank me).`);
-      }
-      return ephemeral(parts.join(" "));
-    }
-
     default:
       return ephemeral(`Unknown command: \`${name}\`.`);
   }

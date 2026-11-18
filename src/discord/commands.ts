@@ -48,10 +48,6 @@ export function commandDefinitions(includeDebug = false) {
     builder("wordle-unregister", "Leave the game and drop your points role").addUserOption((option) =>
       option.setName("user").setDescription("Member to unregister (admins only; defaults to you)"),
     ),
-
-    builder("wordle-resync", "Re-apply stored totals to the points roles").setDefaultMemberPermissions(
-      PermissionFlagsBits.ManageGuild,
-    ),
   ];
 
   const debug = [

@@ -39,7 +39,6 @@ The bot never reads points from names and never edits nicknames.
 | Command | What it does |
 |---|---|
 | `/wordle-award user: points:` | Correct a total; halves and negatives allowed |
-| `/wordle-resync` | Re-apply stored totals to roles (e.g. after a rename) |
 
 **Developer tools** (off by default): set `DEBUG_TOOLS=true` in `.env` and restart to
 register `/wordle-close` and `/wordle-reopen`. They end or undo the current day early —
@@ -79,7 +78,7 @@ handy for testing, not needed in normal play.
   `-114 points`), created with no permissions. Colours band the totals: grey under 10,
   green 10–24.5, blue 25–49.5, gold 50+.
 - The role is renamed whenever the total changes; no nickname is used, so renaming yourself
-  needs no resync.
+  needs nothing extra.
 - The role shows as a member's badge only if it is their highest role.
 - `/wordle-unregister` is the only thing that removes a role — not a zero total.
 
@@ -138,7 +137,7 @@ existing total); nicknames are never edited.
 ### Development
 
 ```powershell
-npm test          # 127 offline tests, no token or network needed
+npm test          # 126 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow
