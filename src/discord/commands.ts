@@ -28,10 +28,6 @@ export function commandDefinitions(includeDebug = false) {
         .addChoices({ name: "All-time", value: "all" }, { name: "Today", value: "today" }),
     ),
 
-    builder("points", "Show Wordle points for yourself or another member").addUserOption((option) =>
-      option.setName("user").setDescription("Member to look up (defaults to you)"),
-    ),
-
     builder("wordle-award", "Manually add or remove Wordle points")
       .addUserOption((option) => option.setName("user").setDescription("Member to adjust").setRequired(true))
       .addNumberOption((option) =>

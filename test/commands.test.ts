@@ -73,41 +73,6 @@ describe("/wordle-leaderboard", () => {
   });
 });
 
-describe("/points", () => {
-  it("reports a zero total for a registered member", async () => {
-    h = await harness();
-    const reply = await runCommand("points", context(), deps(h));
-    expect(reply.content).toContain("0 points");
-  });
-
-  it("says so for an unregistered member", async () => {
-    h = await harness();
-    const reply = await runCommand(
-      "points",
-      context({ options: options({ user: { id: "user-8", name: "eight" } }) }),
-      deps(h),
-    );
-    expect(reply.content).toContain("not registered yet");
-  });
-
-  it("reports totals and wins for another member", async () => {
-    h = await harness();
-    const player = h.store.player("user-2", "two");
-    player.total = 12.5;
-    player.registered = true;
-    h.store.day("2026-11-15").points["user-2"] = 10;
-
-    const reply = await runCommand(
-      "points",
-      context({ options: options({ user: { id: "user-2", name: "two" } }) }),
-      deps(h),
-    );
-
-    expect(reply.content).toContain("12.5 points");
-    expect(reply.content).toContain("1 win");
-  });
-});
-
 describe("/wordle-award", () => {
   it("adds points and creates the personal role", async () => {
     h = await harness({ nicknames: { "user-9": "Nine ✦" } });

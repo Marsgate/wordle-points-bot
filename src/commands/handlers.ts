@@ -129,28 +129,6 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       return scope === "today" ? leaderboardToday(deps.store, ctx.now) : leaderboardAllTime(deps.store);
     }
 
-    case "points": {
-      const target = ctx.options.getUser("user");
-      const userId = target?.id ?? ctx.userId;
-      const player = deps.store.data.players[userId];
-      if (!player?.registered) return ephemeral(`${mention(userId)} is not registered yet.`);
-
-      const wins = Object.values(deps.store.data.days).filter((day) => (day.points[userId] ?? 0) > 0).length;
-      const key = dayKey(ctx.now, deps.store.config.timeZone);
-      const today = deps.store.data.days[key]?.entries[userId];
-
-      const lines = [`${mention(userId)} has **${formatPoints(player.total)} points** · ${plural(wins, "win")}.`];
-      if (today) {
-        const score = scoreDay(Object.values(deps.store.data.days[key]?.entries ?? {}));
-        const points = score.points[userId] ?? 0;
-        lines.push(
-          `Today: ${today.solved ? `${today.guesses}/6` : "X/6"}` +
-            (points > 0 ? ` — provisionally ${formatPoints(points)} pts.` : " — out of the points."),
-        );
-      }
-      return ephemeral(lines.join("\n"));
-    }
-
     case "wordle-register": {
       const reply = await registerMember(
         { store: deps.store, display: deps.display },
