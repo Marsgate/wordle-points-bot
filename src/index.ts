@@ -107,7 +107,7 @@ async function main(): Promise<void> {
           logger.info(`Using guild "${onlyGuild.name}" (${onlyGuild.id}); results count in every channel.`);
         }
       } else if (!store.config.guildId && ready.guilds.cache.size > 1) {
-        logger.warn("In more than one server; run /wordle-setup in the one you want scored.");
+        logger.warn("In more than one server; set DISCORD_GUILD_ID to the one you want scored.");
       }
 
       if (!store.config.guildId) {

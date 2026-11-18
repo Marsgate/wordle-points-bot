@@ -54,8 +54,8 @@ handy for testing, not needed in normal play.
   so they never take the prize — they get pinged in that channel instead, with a
   **Register** button that opens a short form for their current total.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
-  6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out slightly
-  more than 10 in total (a 3-way tie pays 10.5).
+  5→2, 6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out
+  slightly more than 10 in total (a 3-way tie pays 10.5).
 - A day ends at local midnight (`America/Indianapolis` by default). If the bot was
   offline, it closes missed days on the next start.
 
@@ -89,6 +89,8 @@ handy for testing, not needed in normal play.
 ### Requirements
 
 - Node.js 20.11 or newer.
+- One Discord server per bot; the store is single-guild (set `DISCORD_GUILD_ID` if the bot
+  is in more than one).
 - A Discord application with a bot user, invited with the **`bot`** scope.
 - Privileged intents enabled in the Developer Portal → **Bot**: **Message Content** and
   **Server Members**.
@@ -112,6 +114,7 @@ Fill in `.env`:
 ```
 DISCORD_TOKEN=...        # Developer Portal → Bot → Reset Token
 DISCORD_GUILD_ID=...     # optional: register slash commands instantly
+DATA_DIR=./data          # optional: where the JSON store lives
 TZ=America/Indianapolis  # day boundary, read on first run
 DEBUG_TOOLS=false        # optional: enable /wordle-close and /wordle-reopen
 ```

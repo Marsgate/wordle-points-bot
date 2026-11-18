@@ -2,7 +2,7 @@
   "name": "wordle-points-bot",
   "version": "0.1.0",
   "private": true,
-  "description": "Discord bot that turns daily Wordle results into points, leaderboards and a spoiler channel.",
+  "description": "Discord bot that turns the Wordle Activity's daily summary into points, personal roles and a server streak.",
   "type": "module",
   "engines": {
     "node": ">=20.11"
