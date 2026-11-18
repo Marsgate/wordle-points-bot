@@ -157,7 +157,7 @@ export class SummaryService {
         try {
           await this.deps.notifier.send(
             message.channelId,
-            `Um, actually 🤓☝️ — the server-wide streak is **${serverStreak}** ` +
+            `Um, actually 🤓☝️ — the streak is **${serverStreak}** ` +
               `${serverStreak === 1 ? "day" : "days"}.`,
           );
         } catch (error) {
