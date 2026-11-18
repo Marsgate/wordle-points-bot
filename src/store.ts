@@ -17,7 +17,9 @@ export interface DayRecord {
   points: Record<string, number>;
   finalized: boolean;
   finalizedAt?: string;
-  /** Message id of the Activity summary that was applied, for dedupe. */
+  /** Message ids of the Activity summaries applied to this day, for dedupe. */
+  summaryMessageIds?: string[];
+  /** Legacy single-summary id; read for old stores, kept in step when writing. */
   summaryMessageId?: string;
 }
 
@@ -137,7 +139,7 @@ export class JsonStore {
   day(key: string): DayRecord {
     const existing = this.state.days[key];
     if (existing) return existing;
-    const created: DayRecord = { key, entries: {}, points: {}, finalized: false };
+    const created: DayRecord = { key, entries: {}, points: {}, finalized: false, summaryMessageIds: [] };
     this.state.days[key] = created;
     return created;
   }

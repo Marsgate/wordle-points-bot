@@ -99,6 +99,24 @@ describe("SummaryService", () => {
     expect(h.store.data.players["111"]?.total).toBe(10);
   });
 
+  it("applies each channel's summary once for the same day", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    const fromA = { ...SUMMARY_MESSAGE, id: "sum-a", channelId: "chan-a" };
+    const fromB = { ...SUMMARY_MESSAGE, id: "sum-b", channelId: "chan-b" };
+
+    expect(await h.summary.handleMessage(fromA)).toBe(true);
+    expect(await h.summary.handleMessage(fromB)).toBe(true);
+    expect(await h.summary.handleMessage(fromA)).toBe(false);
+    expect(await h.summary.handleMessage(fromB)).toBe(false);
+
+    expect(h.store.data.players["111"]?.total).toBe(10);
+    expect(h.store.data.days["2026-11-15"]?.summaryMessageIds).toEqual(
+      expect.arrayContaining(["sum-a", "sum-b"]),
+    );
+  });
+
   it("never lets an older summary overwrite a newer streak", async () => {
     h = await harness();
     register(h, "111", "Ada");

@@ -111,8 +111,11 @@ export class SummaryService {
 
     const day = this.deps.store.day(summaryDay);
 
-    // The same message is seen by both the gateway and the poller.
-    if (day.summaryMessageId === message.id) return false;
+    // The same message is seen by both the gateway and the poller, and every
+    // channel's summary describes the same day, so remember every id applied.
+    if (day.summaryMessageIds?.includes(message.id) || day.summaryMessageId === message.id) {
+      return false;
+    }
 
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);
@@ -141,6 +144,7 @@ export class SummaryService {
     }
 
     day.summaryMessageId = message.id;
+    day.summaryMessageIds = [...new Set([...(day.summaryMessageIds ?? []), message.id])];
     this.updateBaseline(summary.streak, summaryDay);
 
     // Re-close the day with the summary's data merged in.

@@ -140,10 +140,27 @@ On first start the bot records the guild and the day it joined, so there is no s
 command to run. Members register themselves with `/wordle-register points:0` (or their
 existing total); nicknames are never edited.
 
+### Running unattended (Windows)
+
+To keep the bot running outside any terminal, after logging in:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-bot-task.ps1
+```
+
+That registers a **WordleScoreBot** scheduled task which starts at logon, hides its
+window, restarts the bot if it exits, and appends output to `logs\bot.log`. Undo it with:
+
+```powershell
+Unregister-ScheduledTask -TaskName "WordleScoreBot" -Confirm:$false
+```
+
+Run only one copy at a time — two instances would fight over the store.
+
 ### Development
 
 ```powershell
-npm test          # 129 offline tests, no token or network needed
+npm test          # 130 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow
