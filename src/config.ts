@@ -6,6 +6,8 @@ export interface AppConfig {
   guildId: string | null;
   dataDir: string;
   timeZone: string;
+  /** Exposes developer-only commands such as /wordle-close. */
+  debugTools: boolean;
 }
 
 export const DEFAULT_TIME_ZONE = "America/Indianapolis";
@@ -29,6 +31,7 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): AppConfig {
     guildId: env.DISCORD_GUILD_ID?.trim() || null,
     dataDir: env.DATA_DIR?.trim() || "./data",
     timeZone,
+    debugTools: /^(1|true|yes|on)$/i.test(env.DEBUG_TOOLS?.trim() ?? ""),
   };
 }
 

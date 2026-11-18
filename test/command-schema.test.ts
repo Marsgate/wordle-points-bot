@@ -16,13 +16,14 @@ interface JsonCommand {
   options?: JsonOption[];
 }
 
-const definitions = commandDefinitions as unknown as JsonCommand[];
+const definitions = commandDefinitions() as unknown as JsonCommand[];
+const withDebug = commandDefinitions(true) as unknown as JsonCommand[];
 
 describe("slash command definitions", () => {
   it("are unique, valid chat-input commands", () => {
     const names = definitions.map((command) => command.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toHaveLength(10);
+    expect(names).toHaveLength(8);
 
     for (const command of definitions) {
       expect(command.name).toMatch(/^[a-z0-9-]{1,32}$/u);
@@ -33,7 +34,7 @@ describe("slash command definitions", () => {
   });
 
   it("use unique, valid option names and descriptions", () => {
-    for (const command of definitions) {
+    for (const command of withDebug) {
       const optionNames = (command.options ?? []).map((option) => option.name);
       expect(new Set(optionNames).size).toBe(optionNames.length);
       for (const option of command.options ?? []) {
@@ -42,6 +43,17 @@ describe("slash command definitions", () => {
         expect(option.description.length).toBeLessThanOrEqual(100);
       }
     }
+  });
+
+  it("hides developer tools unless debug is on", () => {
+    const base = definitions.map((command) => command.name);
+    const debug = withDebug.map((command) => command.name);
+
+    expect(base).not.toContain("wordle-close");
+    expect(base).not.toContain("wordle-reopen");
+    expect(debug).toContain("wordle-close");
+    expect(debug).toContain("wordle-reopen");
+    expect(debug).toHaveLength(base.length + 2);
   });
 
   it("offers all-time first on the leaderboard", () => {

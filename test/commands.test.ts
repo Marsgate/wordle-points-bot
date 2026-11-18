@@ -14,6 +14,7 @@ function deps(test: Harness): CommandDeps {
     store: test.store,
     daily: test.daily,
     display: test.display,
+    debug: true,
     now: () => new Date("2026-11-16T20:00:00Z"),
   };
 }
@@ -233,6 +234,11 @@ describe("/wordle-award guards", () => {
 });
 
 describe("/wordle-close", () => {
+  it("refuses to run when developer tools are off", async () => {
+    h = await harness();
+    const reply = await runCommand("wordle-close", context(), { ...deps(h), debug: false });
+    expect(reply.content).toContain("Developer tools are off");
+  });
   it("finalizes today, awards points and reports the winner", async () => {
     h = await harness();
     await post(h, "user-1", 3);

@@ -39,10 +39,12 @@ The bot never reads points from names and never edits nicknames.
 
 | Command | What it does |
 |---|---|
-| `/wordle-close` | End today now and award points (later results today do not count) |
-| `/wordle-reopen` | Undo a close and let later results count again |
 | `/wordle-award user: points:` | Correct a total; halves and negatives allowed |
 | `/wordle-resync` | Re-apply stored totals to roles (e.g. after a rename) |
+
+**Developer tools** (off by default): set `DEBUG_TOOLS=true` in `.env` and restart to
+register `/wordle-close` and `/wordle-reopen`. They end or undo the current day early —
+handy for testing, not needed in normal play.
 
 ## How points work
 
@@ -57,8 +59,7 @@ The bot never reads points from names and never edits nicknames.
   6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out slightly
   more than 10 in total (a 3-way tie pays 10.5).
 - A day ends at local midnight (`America/Indianapolis` by default). If the bot was
-  offline, it closes missed days on the next start. Admins can close or reopen a day
-  early.
+  offline, it closes missed days on the next start.
 
 ## Streak
 
@@ -139,7 +140,7 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 126 offline tests, no token or network needed
+npm test          # 128 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

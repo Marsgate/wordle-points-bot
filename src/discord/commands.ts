@@ -12,74 +12,89 @@ import type { Logger } from "../services/ports.js";
 const builder = (name: string, description: string): SlashCommandBuilder =>
   new SlashCommandBuilder().setName(name).setDescription(description);
 
-export const commandDefinitions = [
-  builder("wordle-register", "Join the points game and enter your current total").addNumberOption((option) =>
-    option
-      .setName("points")
-      .setDescription("Your current Wordle points — use 0 if you are starting fresh")
-      .setRequired(true),
-  ),
+export function commandDefinitions(includeDebug = false) {
+  const base = [
+    builder("wordle-register", "Join the points game and enter your current total").addNumberOption((option) =>
+      option
+        .setName("points")
+        .setDescription("Your current Wordle points — use 0 if you are starting fresh")
+        .setRequired(true),
+    ),
 
-  builder("wordle-status", "Show the current Wordle bot configuration"),
+    builder("wordle-status", "Show the current Wordle bot configuration"),
 
-  builder("wordle-leaderboard", "Show overall point totals (or today's ranking)").addStringOption((option) =>
-    option
-      .setName("scope")
-      .setDescription("Overall totals by default")
-      .addChoices({ name: "All-time", value: "all" }, { name: "Today", value: "today" }),
-  ),
+    builder("wordle-leaderboard", "Show overall point totals (or today's ranking)").addStringOption((option) =>
+      option
+        .setName("scope")
+        .setDescription("Overall totals by default")
+        .addChoices({ name: "All-time", value: "all" }, { name: "Today", value: "today" }),
+    ),
 
-  builder("points", "Show Wordle points for yourself or another member").addUserOption((option) =>
-    option.setName("user").setDescription("Member to look up (defaults to you)"),
-  ),
+    builder("points", "Show Wordle points for yourself or another member").addUserOption((option) =>
+      option.setName("user").setDescription("Member to look up (defaults to you)"),
+    ),
 
-  builder("wordle-award", "Manually add or remove Wordle points")
-    .addUserOption((option) => option.setName("user").setDescription("Member to adjust").setRequired(true))
-    .addNumberOption((option) =>
-      option.setName("points").setDescription("Points to add (negative removes, halves allowed)").setRequired(true),
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+    builder("wordle-award", "Manually add or remove Wordle points")
+      .addUserOption((option) => option.setName("user").setDescription("Member to adjust").setRequired(true))
+      .addNumberOption((option) =>
+        option.setName("points").setDescription("Points to add (negative removes, halves allowed)").setRequired(true),
+      )
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-  builder("wordle-streak", "Show the server's Wordle streak; admins can seed it").addNumberOption((option) =>
-    option
-      .setName("count")
-      .setDescription("Admin: set the current streak in days (0 clears it)"),
-  ),
+    builder("wordle-streak", "Show the server's Wordle streak; admins can seed it").addNumberOption((option) =>
+      option
+        .setName("count")
+        .setDescription("Admin: set the current streak in days (0 clears it)"),
+    ),
 
-  builder("wordle-close", "Close today's results now and award points (later shares today will not count)")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+    builder("wordle-unregister", "Leave the game and drop your points role").addUserOption((option) =>
+      option.setName("user").setDescription("Member to unregister (admins only; defaults to you)"),
+    ),
 
-  builder("wordle-reopen", "Undo today's close: take the points back and let later shares count")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+    builder("wordle-resync", "Re-apply stored totals to the points roles").setDefaultMemberPermissions(
+      PermissionFlagsBits.ManageGuild,
+    ),
+  ];
 
-  builder("wordle-unregister", "Leave the game and drop your points role").addUserOption((option) =>
-    option.setName("user").setDescription("Member to unregister (admins only; defaults to you)"),
-  ),
+  const debug = [
+    builder("wordle-close", "Close today's results now and award points (later results will not count)")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
-  builder("wordle-resync", "Re-apply stored totals to the points roles").setDefaultMemberPermissions(
-    PermissionFlagsBits.ManageGuild,
-  ),
-].map((command) => command.toJSON());
+    builder("wordle-reopen", "Undo today's close: take the points back and let later results count")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  ];
+
+  return [...base, ...(includeDebug ? debug : [])].map((command) => command.toJSON());
+}
 
 /** Register the command set in one guild. Used at startup and on join. */
-export async function registerGuildCommands(guild: Guild, logger: Logger): Promise<void> {
-  const registered = await guild.commands.set(commandDefinitions);
+export async function registerGuildCommands(
+  guild: Guild,
+  logger: Logger,
+  includeDebug = false,
+): Promise<void> {
+  const registered = await guild.commands.set(commandDefinitions(includeDebug));
   const names = [...registered.values()].map((command) => command.name).join(", ");
   logger.info(`Registered ${registered.size} slash commands in guild ${guild.name}: ${names}`);
 }
 
 /** Global commands take up to an hour to appear; a guild id makes them instant. */
-export async function registerCommands(client: Client, guildId: string | null, logger: Logger): Promise<void> {
+export async function registerCommands(
+  client: Client,
+  guildId: string | null,
+  logger: Logger,
+  includeDebug = false,
+): Promise<void> {
   const application = client.application;
   if (!application) throw new Error("Discord client is not ready; cannot register commands");
 
   if (guildId) {
     const guild = await client.guilds.fetch(guildId);
-    await registerGuildCommands(guild, logger);
+    await registerGuildCommands(guild, logger, includeDebug);
     return;
   }
 
-  const registered = await application.commands.set(commandDefinitions);
+  const registered = await application.commands.set(commandDefinitions(includeDebug));
   logger.info(
     `Registered ${registered.size} global slash commands (may take up to an hour to appear): ` +
       [...registered.values()].map((command) => command.name).join(", "),

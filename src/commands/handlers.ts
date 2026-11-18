@@ -34,10 +34,15 @@ export interface CommandDeps {
   store: JsonStore;
   daily: DailyService;
   display: DisplayService;
+  /** Show developer-only commands (close/reopen). Off unless DEBUG_TOOLS is set. */
+  debug: boolean;
   now: () => Date;
 }
 
 const ephemeral = (content: string): CommandReply => ({ content, ephemeral: true });
+
+const DEBUG_OFF =
+  "Developer tools are off. Set `DEBUG_TOOLS=true` in the bot's `.env` and restart to enable them.";
 const visible = (content: string): CommandReply => ({ content, ephemeral: false });
 
 function mention(userId: string): string {
@@ -246,13 +251,14 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
     }
 
     case "wordle-close": {
+      if (!deps.debug) return ephemeral(DEBUG_OFF);
       if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to close a day.");
 
       const timeZone = deps.store.config.timeZone;
       const key = dayKey(ctx.now, timeZone);
       const day = deps.store.data.days[key];
       if (!day || Object.keys(day.entries).length === 0) {
-        return ephemeral(`No shares recorded for ${key} yet, so there is nothing to close.`);
+        return ephemeral(`No results recorded for ${key} yet, so there is nothing to close.`);
       }
       if (day.finalized) {
         return ephemeral(`**${key}** is already closed. The next day starts at midnight, ${timeZone}.`);
@@ -288,12 +294,13 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
           ...lines,
           `Updated ${plural(report.updated.length, "points role")}.${failureNote}`,
           `🔥 ${streak.current} day server streak (best ${streak.best}).`,
-          "Later shares today will not count. The next day starts at midnight.",
+          "Later results today will not count. The next day starts at midnight.",
         ].join("\n"),
       );
     }
 
     case "wordle-reopen": {
+      if (!deps.debug) return ephemeral(DEBUG_OFF);
       if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to reopen a day.");
 
       const timeZone = deps.store.config.timeZone;
@@ -308,7 +315,7 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
         [
           `**Reopened ${formatDayLabel(key, timeZone)}**`,
           `Reverted awarded points for ${plural(report.reverted, "member")}.`,
-          "Later shares today count again. Close it again with `/wordle-close`.",
+          "Later results today count again. Close it again with `/wordle-close`.",
         ].join("\n"),
       );
     }

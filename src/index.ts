@@ -67,7 +67,7 @@ async function main(): Promise<void> {
   attachEvents(client, {
     summary,
     logger,
-    commands: { store, daily, display, now: () => new Date() },
+    commands: { store, daily, display, debug: env.debugTools, now: () => new Date() },
   });
 
   let ticking = false;
@@ -115,7 +115,7 @@ async function main(): Promise<void> {
       }
 
       try {
-        await registerCommands(client, env.guildId, logger);
+        await registerCommands(client, env.guildId, logger, env.debugTools);
       } catch (error) {
         logger.error("Could not register slash commands", error);
       }
@@ -141,6 +141,11 @@ async function main(): Promise<void> {
         `Invite URL: https://discord.com/api/oauth2/authorize?client_id=${ready.user.id}` +
           `&permissions=${INVITE_PERMISSIONS}&scope=bot%20applications.commands`,
       );
+      logger.info(
+        env.debugTools
+          ? "Developer tools enabled: /wordle-close and /wordle-reopen are registered."
+          : "Developer tools disabled (set DEBUG_TOOLS=true to enable close/reopen).",
+      );
 
       try {
         const found = await summary.poll();
@@ -159,7 +164,7 @@ async function main(): Promise<void> {
   // A newly joined server gets its commands immediately, so it can be set up
   // without editing the environment or waiting for a global rollout.
   client.on(Events.GuildCreate, (guild) => {
-    void registerGuildCommands(guild, logger).catch((error: unknown) => {
+    void registerGuildCommands(guild, logger, env.debugTools).catch((error: unknown) => {
       logger.warn(`Could not register commands in ${guild.name}`, error);
     });
   });
