@@ -67,13 +67,12 @@ handy for testing, not needed in normal play.
   the streak.
 - The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
   streak still stands.
-- The streak **starts at the highest group streak** reported around setup (the initial scan
-  collects every channel's summary), then counts server-wide: each day with at least one
-  winner adds one. Later Activity numbers do not move it. `/wordle-streak count:` can
-  override it manually.
+- The streak **starts at the highest group streak** reported when the bot first scans the
+  channels, then counts server-wide: each day with at least one winner adds one. Later
+  Activity numbers do not move it. `/wordle-streak count:` can override it manually.
 - A group's own summary can disagree with the server-wide streak (different channel,
   different group). When it does, the bot posts a short correction in that channel:
-  *"Um, actually — the server-wide streak is N days."*
+  *"Um, actually 🤓☝️ — the streak is N days."*
 
 ## Roles
 
@@ -116,6 +115,7 @@ Fill in `.env`:
 DISCORD_TOKEN=...        # Developer Portal → Bot → Reset Token
 DISCORD_GUILD_ID=...     # optional: register slash commands instantly
 TZ=America/Indianapolis  # day boundary, read on first run
+DEBUG_TOOLS=false        # optional: enable /wordle-close and /wordle-reopen
 ```
 
 Invite the bot with the `bot` and `applications.commands` scopes and permission integer
@@ -132,10 +132,9 @@ npm run build
 npm start
 ```
 
-Then, in the server, once:
-
-Members register themselves with `/wordle-register points:0` (or their existing total) and
-delete any points text from their own nicknames.
+On first start the bot records the guild and the day it joined, so there is no setup
+command to run. Members register themselves with `/wordle-register points:0` (or their
+existing total); nicknames are never edited.
 
 ### Development
 
