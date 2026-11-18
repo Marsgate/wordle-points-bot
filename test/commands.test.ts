@@ -259,6 +259,22 @@ describe("/wordle-streak", () => {
     expect(reply.content).toContain("1 day server streak");
   });
 
+  it("counts a day only an unregistered player solved", async () => {
+    h = await harness();
+    h.store.config.streakSeed = { day: "2026-11-14", count: 10 };
+    h.store.day("2026-11-15").entries["ghost"] = {
+      userId: "ghost",
+      guesses: 2,
+      solved: true,
+      messageId: "m",
+      recordedAt: "2026-11-15T14:00:00Z",
+    };
+
+    const reply = await runCommand("wordle-streak", context(), deps(h));
+
+    expect(reply.content).toContain("11 day server streak");
+  });
+
   it("lets an admin seed a long streak", async () => {
     h = await harness();
 

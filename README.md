@@ -64,8 +64,8 @@ handy for testing, not needed in normal play.
 
 ## Streak
 
-- A day counts if **at least one member solved** the puzzle. Consecutive counted days make
-  the streak.
+- A day counts if **at least one player solved** the puzzle — registered or not. An
+  unregistered solver still keeps the streak alive, even though they earn no points.
 - The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
   streak still stands.
 - The streak **starts at the highest group streak** reported when the bot first scans the
@@ -143,7 +143,7 @@ existing total); nicknames are never edited.
 ### Development
 
 ```powershell
-npm test          # 128 offline tests, no token or network needed
+npm test          # 129 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

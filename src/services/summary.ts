@@ -207,11 +207,7 @@ export class SummaryService {
 
   private wonDays(): string[] {
     return Object.values(this.deps.store.data.days)
-      .filter((day) =>
-        Object.values(day.entries).some(
-          (entry) => entry.solved && this.deps.store.data.players[entry.userId]?.registered,
-        ),
-      )
+      .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
       .map((day) => day.key);
   }
 

@@ -55,25 +55,16 @@ function rankOf(entry: ScoredEntry): number {
   return entry.solved ? entry.guesses : 7;
 }
 
-/** Days on which at least one registered member solved the puzzle. */
+/** Days on which at least one player solved the puzzle, registered or not. */
 function wonDays(store: JsonStore): string[] {
   return Object.values(store.data.days)
-    .filter((day) =>
-      Object.values(day.entries).some(
-        (entry) => entry.solved && store.data.players[entry.userId]?.registered,
-      ),
-    )
+    .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
     .map((day) => day.key);
 }
 
 function hasWinnerOn(store: JsonStore, key: string): boolean {
   const day = store.data.days[key];
-  return Boolean(
-    day &&
-      Object.values(day.entries).some(
-        (entry) => entry.solved && store.data.players[entry.userId]?.registered,
-      ),
-  );
+  return Boolean(day && Object.values(day.entries).some((entry) => entry.solved));
 }
 
 function medal(index: number): string {
