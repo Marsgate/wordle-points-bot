@@ -34,6 +34,10 @@ export interface SpoilerPort {
   lockDown(): Promise<void>;
 }
 
+export interface NotifierPort {
+  send(channelId: string, content: string): Promise<void>;
+}
+
 export interface SummarySourcePort {
   /** Guild text channels the bot can read. */
   listTextChannelIds(): Promise<string[]>;

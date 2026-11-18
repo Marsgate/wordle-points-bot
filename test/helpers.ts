@@ -5,6 +5,7 @@ import { JsonStore } from "../src/store.js";
 import type {
   Logger,
   MemberPort,
+  NotifierPort,
   SpoilerPort,
   SummaryMessage,
   SummarySourcePort,
@@ -101,6 +102,16 @@ export function fakeSpoilers() {
   return { port, members, calls };
 }
 
+export function fakeNotifier() {
+  const messages: Array<{ channelId: string; content: string }> = [];
+  const port: NotifierPort = {
+    send: async (channelId, content) => {
+      messages.push({ channelId, content });
+    },
+  };
+  return { port, messages };
+}
+
 export function fakeSummarySource() {
   const messagesByChannel = new Map<string, SummaryMessage[]>();
   const port: SummarySourcePort = {
@@ -142,6 +153,7 @@ export interface Harness {
   results: ResultsService;
   summary: SummaryService;
   summarySource: ReturnType<typeof fakeSummarySource>;
+  notifier: ReturnType<typeof fakeNotifier>;
   cleanup: () => Promise<void>;
 }
 
@@ -176,6 +188,7 @@ export async function harness(
   const members = fakeMemberPort(options.nicknames);
   const spoilers = fakeSpoilers();
   const summarySource = fakeSummarySource();
+  const notifier = fakeNotifier();
   const now = options.now ?? (() => new Date("2026-11-16T20:00:00Z"));
 
   const display = new DisplayService({ port: members.port, logger: silentLogger });
@@ -197,6 +210,7 @@ export async function harness(
     daily,
     members: members.port,
     source: summarySource.port,
+    notifier: notifier.port,
     logger: silentLogger,
     timeZone: () => store.config.timeZone,
   });
@@ -211,6 +225,7 @@ export async function harness(
     results,
     summary,
     summarySource,
+    notifier,
     cleanup: () => rm(dir, { recursive: true, force: true }),
   };
 }

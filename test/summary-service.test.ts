@@ -104,6 +104,29 @@ describe("SummaryService", () => {
     expect(h.store.config.streakSeed).toEqual({ day: "2026-11-16", count: 12 });
   });
 
+  it("announces when its records disagree with the Activity streak", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakSeed = { day: "2026-11-14", count: 5 };
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(h.notifier.messages).toHaveLength(1);
+    expect(h.notifier.messages[0]?.channelId).toBe("chan-wordle");
+    expect(h.notifier.messages[0]?.content).toContain("12");
+    expect(h.notifier.messages[0]?.content).toContain("my records had **0**");
+  });
+
+  it("stays quiet when its records already match", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(h.notifier.messages).toHaveLength(0);
+  });
+
   it("ignores summaries from before the bot was set up", async () => {
     h = await harness();
     register(h, "111", "Ada");

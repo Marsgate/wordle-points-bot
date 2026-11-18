@@ -12,6 +12,7 @@ import type {
   Logger,
   MemberPort,
   MemberSummary,
+  NotifierPort,
   SpoilerPort,
   SummaryMessage,
   SummarySourcePort,
@@ -178,6 +179,18 @@ export class DiscordSpoilerPort implements SpoilerPort {
       { ViewChannel: false },
       { reason: "Wordle spoiler channel: locked until you finish the day's puzzle" },
     );
+  }
+}
+
+export class DiscordNotifierPort implements NotifierPort {
+  constructor(private readonly client: Client) {}
+
+  async send(channelId: string, content: string): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement)) {
+      throw new Error(`channel ${channelId} is not a guild text channel`);
+    }
+    await channel.send({ content, allowedMentions: { parse: [] } });
   }
 }
 

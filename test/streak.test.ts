@@ -92,6 +92,34 @@ describe("computeStreak", () => {
     expect(streak.current).toBe(1);
   });
 
+  it("breaks a streak when a closed day had no winner", () => {
+    const streak = computeStreak({
+      wonDays: ["2026-11-15", "2026-11-16"],
+      today: TODAY,
+      dayIsClosed: true,
+    });
+    expect(streak.current).toBe(0);
+  });
+
+  it("counts a win on a closed day", () => {
+    const streak = computeStreak({
+      wonDays: ["2026-11-16", TODAY],
+      today: TODAY,
+      dayIsClosed: true,
+    });
+    expect(streak.current).toBe(2);
+  });
+
+  it("keeps a seed that covers a closed day", () => {
+    const streak = computeStreak({
+      wonDays: [],
+      today: TODAY,
+      seed: { day: TODAY, count: 103 },
+      dayIsClosed: true,
+    });
+    expect(streak.current).toBe(103);
+  });
+
   it("tracks the best historical run", () => {
     const streak = computeStreak({
       wonDays: ["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", TODAY],

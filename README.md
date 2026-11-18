@@ -72,6 +72,8 @@ The bot never reads points from names and never edits nicknames.
   streak still stands.
 - The Activity's summary reports the group streak, so the bot keeps its streak in sync
   automatically. `/wordle-streak count:` still works for a manual seed.
+- If the bot's own records disagree with the Activity's number, it posts a short correction
+  in the channel where the summary appeared, and adopts the Activity's count.
 
 ## Roles and spoilers
 
@@ -144,7 +146,7 @@ delete any points text from their own nicknames.
 ### Development
 
 ```powershell
-npm test          # 153 offline tests, no token or network needed
+npm test          # 159 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Wordle day, prints the whole flow

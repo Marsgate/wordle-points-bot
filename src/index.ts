@@ -9,7 +9,7 @@ import { DailyService } from "./services/daily.js";
 import { DisplayService } from "./services/display.js";
 import { ResultsService } from "./services/results.js";
 import { SummaryService } from "./services/summary.js";
-import { DiscordMemberPort, DiscordSpoilerPort, DiscordSummarySource } from "./discord/adapters.js";
+import { DiscordMemberPort, DiscordNotifierPort, DiscordSpoilerPort, DiscordSummarySource } from "./discord/adapters.js";
 import { registerCommands, registerGuildCommands } from "./discord/commands.js";
 import { attachEvents } from "./discord/events.js";
 
@@ -57,11 +57,13 @@ async function main(): Promise<void> {
     now: () => new Date(),
   });
   const results = new ResultsService({ store, spoilers, logger });
+  const notifier = new DiscordNotifierPort(client);
   const summary = new SummaryService({
     store,
     daily,
     members: memberPort,
     source: new DiscordSummarySource(client, () => store.config.guildId),
+    notifier,
     logger,
     timeZone: () => store.config.timeZone,
   });

@@ -24,21 +24,30 @@ export function computeStreak(input: {
   wonDays: Iterable<string>;
   today: string;
   seed?: StreakSeed | null;
+  /** True when the day is already over, so a missing win breaks the streak. */
+  dayIsClosed?: boolean;
 }): { current: number; best: number } {
   const won = new Set(input.wonDays);
   const seed = input.seed && input.seed.count > 0 ? input.seed : null;
 
   let current = 0;
-  let key = won.has(input.today) ? input.today : previousDayKey(input.today);
 
-  for (;;) {
-    if (seed && key === seed.day) {
-      current += seed.count;
-      break;
+  if (input.dayIsClosed && !won.has(input.today)) {
+    // A day that ended without a solve breaks the streak, unless the seed
+    // itself covers that day.
+    current = seed?.day === input.today ? seed.count : 0;
+  } else {
+    let key = won.has(input.today) ? input.today : previousDayKey(input.today);
+
+    for (;;) {
+      if (seed && key === seed.day) {
+        current += seed.count;
+        break;
+      }
+      if (!won.has(key)) break;
+      current += 1;
+      key = previousDayKey(key);
     }
-    if (!won.has(key)) break;
-    current += 1;
-    key = previousDayKey(key);
   }
 
   // Longest run ever, with the seed treated as a pre-existing run.

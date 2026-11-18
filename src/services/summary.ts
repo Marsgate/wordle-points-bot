@@ -1,9 +1,16 @@
 import { dayKey } from "../core/day.js";
 import { looksLikeWordleSummary, parseWordleSummary, type SummaryEntry } from "../core/summary.js";
-import { previousDayKey } from "../core/streak.js";
+import { computeStreak, previousDayKey } from "../core/streak.js";
 import type { JsonStore } from "../store.js";
 import type { DailyService } from "./daily.js";
-import type { Logger, MemberPort, MemberSummary, SummaryMessage, SummarySourcePort } from "./ports.js";
+import type {
+  Logger,
+  MemberPort,
+  MemberSummary,
+  NotifierPort,
+  SummaryMessage,
+  SummarySourcePort,
+} from "./ports.js";
 
 function rank(entry: { guesses: number; solved: boolean }): number {
   return entry.solved ? entry.guesses : 7;
@@ -26,6 +33,7 @@ export class SummaryService {
       daily: DailyService;
       members: MemberPort;
       source: SummarySourcePort;
+      notifier: NotifierPort;
       logger: Logger;
       timeZone: () => string;
     },
@@ -65,25 +73,34 @@ export class SummaryService {
     if (!summary) return false;
 
     const summaryDay = previousDayKey(dayKey(message.createdAt, this.deps.timeZone()));
+    const day = this.deps.store.day(summaryDay);
+
+    // The same message is seen by both the gateway and the poller.
+    if (day.summaryMessageId === message.id) return false;
 
     // Days before the bot was set up were already part of any seeded totals;
-    // scoring them again would double-count.
+    // scoring them again would double-count. Remember them so rescans are quiet.
     const startedOn = this.deps.store.config.startedOn;
     if (startedOn && summaryDay < startedOn) {
-      const day = this.deps.store.day(summaryDay);
       day.summaryMessageId = message.id;
       await this.deps.store.save();
       this.deps.logger.info(`Summary for ${summaryDay} predates setup (${startedOn}); skipped.`);
       return true;
     }
 
-    const day = this.deps.store.day(summaryDay);
-
-    // The same message is seen by both the gateway and the poller.
-    if (day.summaryMessageId === message.id) return false;
-
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);
+
+    // What the bot believed about this day before the summary corrected it.
+    const priorSeed = this.deps.store.config.streakSeed;
+    const before = priorSeed
+      ? computeStreak({
+          wonDays: this.wonDays(),
+          today: summaryDay,
+          seed: priorSeed,
+          dayIsClosed: true,
+        }).current
+      : null;
 
     let applied = 0;
     for (const entry of resolved) {
@@ -125,7 +142,27 @@ export class SummaryService {
       `Summary for ${summaryDay}: ${applied} result(s) applied, ${report.winners.length} winner(s), ` +
         `streak ${summary.streak ?? "unknown"}.`,
     );
+
+    // Announce a disagreement with the Activity, once it has been synced.
+    if (before !== null && summary.streak !== null && before !== summary.streak) {
+      try {
+        await this.deps.notifier.send(
+          message.channelId,
+          `Streak check: my records had **${before}** ${before === 1 ? "day" : "days"}, ` +
+            `but the Activity reports **${summary.streak}**. Syncing to ${summary.streak}.`,
+        );
+      } catch (error) {
+        this.deps.logger.warn("Could not post the streak correction", error);
+      }
+    }
+
     return true;
+  }
+
+  private wonDays(): string[] {
+    return Object.values(this.deps.store.data.days)
+      .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
+      .map((day) => day.key);
   }
 
   /** Member lists are expensive; one fetch serves every summary in a scan. */
