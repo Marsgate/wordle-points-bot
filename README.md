@@ -52,8 +52,9 @@ handy for testing, not needed in normal play.
 - Everyone who finishes takes part in the split, but **only registered members are paid**.
   Tie with an unregistered player at 3/6 and the 10 points split 5/5: you get 5, they get
   nothing.
-- Unregistered players who finish get a message in that channel naming them, with a
-  **Register** button that opens a short form for their current total.
+- Unregistered players who finish get one message naming them, with a **Register**
+  button that opens a short form for their current total. It goes to the Wordle channel
+  (see `DISCORD_WORDLE_CHANNEL_ID`), like the streak correction.
 - The bot never pings anyone: mentions are rendered without a notification, so nobody is
   notified by the summary, the leaderboard or a command reply.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
@@ -72,8 +73,11 @@ handy for testing, not needed in normal play.
   channels, then counts server-wide: each day with at least one winner adds one. Later
   Activity numbers do not move it. `/wordle-streak count:` can override it manually.
 - A group's own summary can disagree with the server-wide streak (different channel,
-  different group). When it does, the bot posts a short correction in that channel:
-  *"Um, actually 🤓☝️ — the streak is N days."*
+  different group). When it does, the bot posts one short correction for the day, in the
+  Wordle channel — a day summarised in several channels still gets a single correction:
+  *"Um, actually 🤓☝️ — the streak is N days."* The same goes for the registration
+  message: each is recorded in the store before it is posted, so restarting the bot
+  cannot repeat it.
 
 ## Roles
 
@@ -117,10 +121,15 @@ Fill in `.env`:
 ```
 DISCORD_TOKEN=...        # Developer Portal → Bot → Reset Token
 DISCORD_GUILD_ID=...     # optional: register slash commands instantly
+DISCORD_WORDLE_CHANNEL_ID=...  # optional: where server-wide notices are posted
 DATA_DIR=./data          # optional: where the JSON store lives
 TZ=America/Indianapolis  # day boundary, read on first run
 DEBUG_TOOLS=false        # optional: enable /wordle-close and /wordle-reopen
 ```
+
+`DISCORD_WORDLE_CHANNEL_ID` is the channel the bot brings up server-wide news in (the
+streak correction and the "you are not registered" message). It is the channel Wordle is
+played in; leave it empty and those messages answer in the channel the summary came from.
 
 Invite the bot with the `bot` and `applications.commands` scopes and permission integer
 `268504064` (View Channels, Send Messages, Read Message History, Manage Roles):

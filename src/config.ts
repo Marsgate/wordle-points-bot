@@ -6,6 +6,8 @@ export interface AppConfig {
   guildId: string | null;
   dataDir: string;
   timeZone: string;
+  /** Channel for server-wide notices; null answers in the summary's own channel. */
+  wordleChannelId: string | null;
   /** Exposes developer-only commands such as /wordle-close. */
   debugTools: boolean;
 }
@@ -31,6 +33,7 @@ export function loadEnv(env: NodeJS.ProcessEnv = process.env): AppConfig {
     guildId: env.DISCORD_GUILD_ID?.trim() || null,
     dataDir: env.DATA_DIR?.trim() || "./data",
     timeZone,
+    wordleChannelId: env.DISCORD_WORDLE_CHANNEL_ID?.trim() || null,
     debugTools: /^(1|true|yes|on)$/i.test(env.DEBUG_TOOLS?.trim() ?? ""),
   };
 }

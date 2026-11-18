@@ -125,6 +125,7 @@ async function main(): Promise<void> {
       notifier,
       logger,
       timeZone: () => store.config.timeZone,
+      noticeChannelId: () => null,
     });
 
     banner("The Activity posts yesterday's summary in #plains");

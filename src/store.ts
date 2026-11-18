@@ -21,6 +21,10 @@ export interface DayRecord {
   summaryMessageIds?: string[];
   /** Legacy single-summary id; read for old stores, kept in step when writing. */
   summaryMessageId?: string;
+  /** True once the day's streak correction has been posted, so it is sent once. */
+  streakCorrectionSent?: boolean;
+  /** Unregistered finishers already prompted for this day, so nobody is asked twice. */
+  registrationPrompted?: string[];
 }
 
 export interface PlayerRecord {

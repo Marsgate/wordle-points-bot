@@ -144,9 +144,14 @@ export async function harness(
     configure?: boolean;
     /** Members pre-registered at 0 points. Defaults to the usual author. */
     registered?: string[];
+    /** Channel server-wide notices go to; null uses the summary's channel. */
+    noticeChannelId?: string | null;
+    /** Existing store directory to reopen, to stand in for a restart. */
+    dir?: string;
   } = {},
 ): Promise<Harness> {
-  const dir = await mkdtemp(join(tmpdir(), "wordle-test-"));
+  const dir = options.dir ?? (await mkdtemp(join(tmpdir(), "wordle-test-")));
+  const ownsDir = options.dir === undefined;
   const store = await JsonStore.open(join(dir, "store.json"), options.timeZone ?? TZ);
 
   if (options.configure !== false) {
@@ -179,6 +184,7 @@ export async function harness(
     notifier: notifier.port,
     logger: silentLogger,
     timeZone: () => store.config.timeZone,
+    noticeChannelId: () => options.noticeChannelId ?? null,
   });
 
   return {
@@ -190,7 +196,9 @@ export async function harness(
     summary,
     summarySource,
     notifier,
-    cleanup: () => rm(dir, { recursive: true, force: true }),
+    cleanup: async () => {
+      if (ownsDir) await rm(dir, { recursive: true, force: true });
+    },
   };
 }
 

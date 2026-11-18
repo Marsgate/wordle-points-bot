@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { harness, type Harness } from "./helpers.js";
 
@@ -189,6 +191,104 @@ describe("SummaryService", () => {
     expect(h.notifier.messages.some((message) => message.content.includes("Um, actually"))).toBe(false);
   });
 
+  it("posts the streak correction once when two channels report the same day", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+
+    const fromA = { ...SUMMARY_MESSAGE, id: "sum-a", channelId: "chan-a" };
+    const fromB = { ...SUMMARY_MESSAGE, id: "sum-b", channelId: "chan-b" };
+
+    await h.summary.handleMessage(fromA);
+    await h.summary.handleMessage(fromB);
+
+    const corrections = h.notifier.messages.filter((message) => message.content.includes("Um, actually"));
+    expect(corrections).toHaveLength(1);
+    expect(h.store.data.days["2026-11-15"]?.streakCorrectionSent).toBe(true);
+  });
+
+  it("posts notices in the configured Wordle channel", async () => {
+    h = await harness({ noticeChannelId: "chan-home" });
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+
+    await h.summary.handleMessage({ ...SUMMARY_MESSAGE, channelId: "chan-elsewhere" });
+
+    const correction = h.notifier.messages.find((message) => message.content.includes("Um, actually"));
+    expect(correction?.channelId).toBe("chan-home");
+
+    const ping = h.notifier.messages.find((message) => message.button?.customId === "wordle-register");
+    expect(ping?.channelId).toBe("chan-home");
+  });
+
+  it("does not repeat notices after a restart", async () => {
+    h = await harness({ nicknames: { "222": "Bob" } });
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+
+    const fromA = { ...SUMMARY_MESSAGE, id: "sum-a", channelId: "chan-a" };
+    const fromB = { ...SUMMARY_MESSAGE, id: "sum-b", channelId: "chan-b" };
+
+    await h.summary.handleMessage(fromA);
+    await h.summary.handleMessage(fromB);
+    expect(h.notifier.messages.length).toBeGreaterThan(0);
+
+    // A restart reopens the store and rescans the same history.
+    const restarted = await harness({ dir: h.dir, nicknames: { "222": "Bob" } });
+    restarted.summarySource.messagesByChannel.set("chan-a", [fromA]);
+    restarted.summarySource.messagesByChannel.set("chan-b", [fromB]);
+
+    expect(await restarted.summary.handleMessage(fromA)).toBe(false);
+    expect(await restarted.summary.poll()).toBe(0);
+    expect(restarted.notifier.messages).toHaveLength(0);
+  });
+
+  it("records a notice before posting it", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+    const test = h;
+
+    // The flag must already be on disk when the send starts, so a crash can
+    // lose a notice but never post one twice.
+    let recordedBeforeSend: boolean | undefined;
+    test.notifier.port.send = async () => {
+      const raw = JSON.parse(await readFile(join(test.dir, "store.json"), "utf8"));
+      recordedBeforeSend = raw.days["2026-11-15"]?.streakCorrectionSent;
+    };
+
+    await test.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(recordedBeforeSend).toBe(true);
+  });
+
+  it("stays quiet when a recorded summary id is lost", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const day = h.store.data.days["2026-11-15"];
+    if (!day) throw new Error("the summary day was not recorded");
+    expect(day.streakCorrectionSent).toBe(true);
+
+    // As if the id dedupe were lost with an old store: the notice itself must
+    // still not be repeated.
+    day.summaryMessageIds = [];
+    delete day.summaryMessageId;
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const corrections = h.notifier.messages.filter((message) => message.content.includes("Um, actually"));
+    expect(corrections).toHaveLength(1);
+  });
+
   it("pings unregistered players who finished", async () => {
     h = await harness({ nicknames: { "222": "Bob" } });
     register(h, "111", "Ada");
@@ -200,6 +300,36 @@ describe("SummaryService", () => {
     expect(ping?.content).toContain("<@333>");
     expect(ping?.content).toContain("/wordle-register");
     expect(ping?.button).toEqual({ label: "Register", customId: "wordle-register" });
+  });
+
+  it("prompts each unregistered player once per day", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    const fromA = {
+      ...SUMMARY_MESSAGE,
+      id: "sum-a",
+      channelId: "chan-a",
+      content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n3/6: <@111> <@333>",
+    };
+    const fromB = {
+      ...SUMMARY_MESSAGE,
+      id: "sum-b",
+      channelId: "chan-b",
+      content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n4/6: <@444>",
+    };
+
+    await h.summary.handleMessage(fromA);
+    await h.summary.handleMessage(fromB);
+
+    const pings = h.notifier.messages.filter((message) => message.button?.customId === "wordle-register");
+    expect(pings).toHaveLength(2);
+    expect(pings[0]?.content).toContain("<@333>");
+    expect(pings[1]?.content).toContain("<@444>");
+    expect(pings[1]?.content).not.toContain("<@333>");
+    expect(h.store.data.days["2026-11-15"]?.registrationPrompted).toEqual(
+      expect.arrayContaining(["333", "444"]),
+    );
   });
 
   it("compares results across channels on the same day", async () => {

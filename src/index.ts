@@ -62,6 +62,7 @@ async function main(): Promise<void> {
     notifier,
     logger,
     timeZone: () => store.config.timeZone,
+    noticeChannelId: () => env.wordleChannelId,
   });
 
   attachEvents(client, {

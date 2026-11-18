@@ -39,6 +39,8 @@ export class SummaryService {
       notifier: NotifierPort;
       logger: Logger;
       timeZone: () => string;
+      /** Server-wide notices go here; null answers in the summary's channel. */
+      noticeChannelId: () => string | null;
     },
   ) {}
 
@@ -150,6 +152,24 @@ export class SummaryService {
     // Re-close the day with the summary's data merged in.
     if (day.finalized) await this.deps.daily.reopenDay(summaryDay);
     const report = await this.deps.daily.finalizeDay(summaryDay);
+
+    // Server-wide notices are decided before the save so their "sent" marks go
+    // to disk with the day they describe: a crash can lose a notice, but a
+    // restart can never post the same one again.
+    const noticeChannel = this.deps.noticeChannelId() ?? message.channelId;
+    const correction =
+      summary.streak !== null && !day.streakCorrectionSent
+        ? this.streakCorrection(summary.streak, summaryDay)
+        : null;
+    const unprompted = [...unregistered].filter(
+      (userId) => !day.registrationPrompted?.includes(userId),
+    );
+
+    if (correction) day.streakCorrectionSent = true;
+    if (unprompted.length > 0) {
+      day.registrationPrompted = [...(day.registrationPrompted ?? []), ...unprompted];
+    }
+
     await this.deps.store.save();
 
     this.deps.logger.info(
@@ -157,45 +177,57 @@ export class SummaryService {
         `streak ${summary.streak ?? "unknown"}.`,
     );
 
-    // The Activity counts the streak for its own group; the server-wide streak
-    // can differ once more than one channel plays. Correct the summary.
-    if (summary.streak !== null) {
-      const serverStreak = computeStreak({
-        wonDays: this.wonDays(),
-        today: summaryDay,
-        seed: this.deps.store.config.streakSeed,
-        dayIsClosed: true,
-      }).current;
-
-      if (serverStreak !== summary.streak) {
-        try {
-          await this.deps.notifier.send(
-            message.channelId,
-            `Um, actually 🤓☝️ — the streak is **${serverStreak}** ` +
-              `${serverStreak === 1 ? "day" : "days"}.`,
-          );
-        } catch (error) {
-          this.deps.logger.warn("Could not post the streak correction", error);
-        }
+    if (correction) {
+      try {
+        await this.deps.notifier.send(noticeChannel, correction);
+      } catch (error) {
+        day.streakCorrectionSent = false;
+        await this.deps.store.save().catch(() => {});
+        this.deps.logger.warn("Could not post the streak correction", error);
       }
     }
 
-    // Ping anyone who finished but is not registered: their result was ignored.
-    if (unregistered.size > 0) {
-      const mentions = [...unregistered].map((id) => `<@${id}>`).join(", ");
+    // Prompt anyone who finished but is not registered: their result was
+    // ignored. Each player is asked once per day, however many channel
+    // summaries mention them.
+    if (unprompted.length > 0) {
+      const mentions = unprompted.map((id) => `<@${id}>`).join(", ");
       try {
         await this.deps.notifier.send(
-          message.channelId,
+          noticeChannel,
           `${mentions} — you finished today's Wordle but are not registered, so it did not count.\n` +
             "Tap **Register** or run `/wordle-register points:<your total>` (use `0` if you are new).",
           { label: "Register", customId: "wordle-register" },
         );
       } catch (error) {
+        day.registrationPrompted = (day.registrationPrompted ?? []).filter(
+          (id) => !unprompted.includes(id),
+        );
+        await this.deps.store.save().catch(() => {});
         this.deps.logger.warn("Could not post the registration ping", error);
       }
     }
 
     return true;
+  }
+
+  /**
+   * The correction text when a group's reported streak disagrees with the
+   * server-wide streak, or null when they agree.
+   */
+  private streakCorrection(reported: number, day: string): string | null {
+    const serverStreak = computeStreak({
+      wonDays: this.wonDays(),
+      today: day,
+      seed: this.deps.store.config.streakSeed,
+      dayIsClosed: true,
+    }).current;
+
+    if (serverStreak === reported) return null;
+    return (
+      `Um, actually 🤓☝️ — the streak is **${serverStreak}** ` +
+      `${serverStreak === 1 ? "day" : "days"}.`
+    );
   }
 
   /** Keep the highest streak reported before the baseline is locked. */
