@@ -147,8 +147,8 @@ describe("SummaryService", () => {
     expect(h.notifier.messages).toHaveLength(1);
     expect(h.notifier.messages[0]?.channelId).toBe("chan-wordle");
     expect(h.notifier.messages[0]?.content).toContain("**13**");
-    expect(h.notifier.messages[0]?.content).toContain("summary says 12");
     expect(h.notifier.messages[0]?.content).toContain("🤓☝️");
+    expect(h.notifier.messages[0]?.content).not.toContain("summary says");
   });
 
   it("stays quiet when the group number matches the server streak", async () => {

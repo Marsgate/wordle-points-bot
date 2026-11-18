@@ -158,7 +158,7 @@ export class SummaryService {
           await this.deps.notifier.send(
             message.channelId,
             `Um, actually 🤓☝️ — the server-wide streak is **${serverStreak}** ` +
-              `${serverStreak === 1 ? "day" : "days"}. This group's summary says ${summary.streak}.`,
+              `${serverStreak === 1 ? "day" : "days"}.`,
           );
         } catch (error) {
           this.deps.logger.warn("Could not post the streak correction", error);
