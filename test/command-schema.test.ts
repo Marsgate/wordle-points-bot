@@ -53,6 +53,6 @@ describe("slash command definitions", () => {
 
     const leaderboard = definitions.find((command) => command.name === "wordle-leaderboard");
     const scope = leaderboard?.options?.find((option) => option.name === "scope");
-    expect(scope?.choices?.map((choice) => choice.value)).toEqual(["today", "all"]);
+    expect(scope?.choices?.map((choice) => choice.value)).toEqual(["all", "today"]);
   });
 });

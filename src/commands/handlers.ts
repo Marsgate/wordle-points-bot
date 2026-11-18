@@ -103,16 +103,16 @@ function leaderboardToday(store: JsonStore, now: Date): CommandReply {
 
 function leaderboardAllTime(store: JsonStore): CommandReply {
   const players = Object.values(store.data.players)
-    .filter((player) => player.total > 0)
+    .filter((player) => player.registered)
     .sort((a, b) => b.total - a.total || a.displayName.localeCompare(b.displayName))
     .slice(0, 15);
 
-  if (players.length === 0) return visible("No points have been awarded yet.");
+  if (players.length === 0) return visible("No one is registered yet. Run `/wordle-register` to join.");
 
   const lines = players.map(
     (player, index) => `${medal(index)} ${mention(player.userId)} — **${formatPoints(player.total)} pts**`,
   );
-  return visible(`**Wordle all-time**\n${lines.join("\n")}`);
+  return visible(`**Wordle all-time points**\n${lines.join("\n")}`);
 }
 
 /**
@@ -176,8 +176,8 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
     }
 
     case "wordle-leaderboard": {
-      const scope = ctx.options.getString("scope") ?? "today";
-      return scope === "all" ? leaderboardAllTime(deps.store) : leaderboardToday(deps.store, ctx.now);
+      const scope = ctx.options.getString("scope") ?? "all";
+      return scope === "today" ? leaderboardToday(deps.store, ctx.now) : leaderboardAllTime(deps.store);
     }
 
     case "points": {

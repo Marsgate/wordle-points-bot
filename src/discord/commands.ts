@@ -33,11 +33,11 @@ export const commandDefinitions = [
 
   builder("wordle-status", "Show the current Wordle bot configuration"),
 
-  builder("wordle-leaderboard", "Show today's Wordle ranking or the all-time points").addStringOption((option) =>
+  builder("wordle-leaderboard", "Show overall point totals (or today's ranking)").addStringOption((option) =>
     option
       .setName("scope")
-      .setDescription("Which board to show")
-      .addChoices({ name: "Today", value: "today" }, { name: "All-time", value: "all" }),
+      .setDescription("Overall totals by default")
+      .addChoices({ name: "All-time", value: "all" }, { name: "Today", value: "today" }),
   ),
 
   builder("points", "Show Wordle points for yourself or another member").addUserOption((option) =>

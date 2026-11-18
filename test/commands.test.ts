@@ -123,12 +123,27 @@ describe("/wordle-leaderboard", () => {
   it("shows the all-time board sorted by points", async () => {
     h = await harness();
     h.store.player("user-1", "one").total = 5;
+    h.store.player("user-2", "two").registered = true;
     h.store.player("user-2", "two").total = 20;
 
     const reply = await runCommand("wordle-leaderboard", context({ options: options({ scope: "all" }) }), deps(h));
 
     expect(reply.content.indexOf("user-2")).toBeLessThan(reply.content.indexOf("user-1"));
     expect(reply.content).toContain("20 pts");
+  });
+
+  it("defaults to overall totals, including negative ones", async () => {
+    h = await harness();
+    h.store.player("user-1", "one").total = -12;
+    h.store.player("user-2", "two").registered = true;
+    h.store.player("user-2", "two").total = 7;
+
+    const reply = await runCommand("wordle-leaderboard", context(), deps(h));
+
+    expect(reply.content).toContain("Wordle all-time points");
+    expect(reply.content).toContain("7 pts");
+    expect(reply.content).toContain("-12 pts");
+    expect(reply.content.indexOf("user-2")).toBeLessThan(reply.content.indexOf("user-1"));
   });
 });
 

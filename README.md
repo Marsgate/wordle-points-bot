@@ -35,7 +35,7 @@ The bot never reads points from names and never edits nicknames.
 | `/wordle-register points:` | Join the game and set your starting total |
 | `/wordle-unregister [user:]` | Leave and drop your role (admins can remove others) |
 | `/points [user:]` | Your total, wins, and today's standing |
-| `/wordle-leaderboard [scope:]` | Today's ranking, or the all-time board |
+| `/wordle-leaderboard [scope:]` | Overall point totals by default, or today's ranking |
 | `/wordle-streak [count:]` | The server's day streak; admins can set it (0 clears) |
 | `/wordle-status` | Configuration, registered count, today's shares |
 
