@@ -91,16 +91,23 @@ export class SummaryService {
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);
 
+    // The streak belongs to one group, so only one channel's summaries drive it.
+    const config = this.deps.store.config;
+    const primary = config.primarySummaryChannelId ?? config.summaryChannelIds[0] ?? null;
+    if (!primary) config.primarySummaryChannelId = message.channelId;
+    const isPrimary = !primary || primary === message.channelId;
+
     // What the bot believed about this day before the summary corrected it.
-    const priorSeed = this.deps.store.config.streakSeed;
-    const before = priorSeed
-      ? computeStreak({
-          wonDays: this.wonDays(),
-          today: summaryDay,
-          seed: priorSeed,
-          dayIsClosed: true,
-        }).current
-      : null;
+    const priorSeed = config.streakSeed;
+    const before =
+      isPrimary && priorSeed
+        ? computeStreak({
+            wonDays: this.wonDays(),
+            today: summaryDay,
+            seed: priorSeed,
+            dayIsClosed: true,
+          }).current
+        : null;
 
     let applied = 0;
     for (const entry of resolved) {
@@ -122,7 +129,7 @@ export class SummaryService {
 
     day.summaryMessageId = message.id;
 
-    if (summary.streak !== null) {
+    if (summary.streak !== null && isPrimary) {
       // Never let an older summary overwrite a newer streak.
       const current = this.deps.store.config.streakSeed;
       if (!current || summaryDay >= current.day) {

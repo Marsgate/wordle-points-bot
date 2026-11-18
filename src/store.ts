@@ -44,6 +44,8 @@ export interface GuildConfig {
   streakSeed: StreakSeed | null;
   /** Channels where an Activity summary has been seen; polled for new ones. */
   summaryChannelIds: string[];
+  /** The one channel whose group streak the bot tracks and corrects. */
+  primarySummaryChannelId: string | null;
   /** Local day the bot was first set up; earlier summaries are ignored. */
   startedOn: string | null;
 }
@@ -65,6 +67,7 @@ export function emptyData(timeZone: string): StoreData {
       lastResetDay: null,
       streakSeed: null,
       summaryChannelIds: [],
+      primarySummaryChannelId: null,
       startedOn: null,
     },
     players: {},

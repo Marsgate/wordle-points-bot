@@ -104,6 +104,33 @@ describe("SummaryService", () => {
     expect(h.store.config.streakSeed).toEqual({ day: "2026-11-16", count: 12 });
   });
 
+  it("pins the streak to the first summary channel", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(h.store.config.primarySummaryChannelId).toBe("chan-wordle");
+  });
+
+  it("ignores the streak from another channel's group", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.primarySummaryChannelId = "chan-wordle";
+    h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
+
+    const otherGroup = {
+      ...SUMMARY_MESSAGE,
+      id: "sum-other",
+      channelId: "chan-plains",
+      content: SUMMARY.replace("12 day", "3 day"),
+    };
+    await h.summary.handleMessage(otherGroup);
+
+    expect(h.store.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
+    expect(h.notifier.messages).toHaveLength(0);
+  });
+
   it("announces when its records disagree with the Activity streak", async () => {
     h = await harness();
     register(h, "111", "Ada");
