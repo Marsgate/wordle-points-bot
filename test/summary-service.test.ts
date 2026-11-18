@@ -104,49 +104,56 @@ describe("SummaryService", () => {
     expect(h.store.config.streakSeed).toEqual({ day: "2026-11-16", count: 12 });
   });
 
-  it("pins the streak to the first summary channel", async () => {
+  it("takes the highest reported streak as the baseline", async () => {
     h = await harness();
     register(h, "111", "Ada");
+    const lower = {
+      ...SUMMARY_MESSAGE,
+      id: "sum-low",
+      channelId: "chan-a",
+      content: SUMMARY.replace("12 day", "5 day"),
+    };
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
-
-    expect(h.store.config.primarySummaryChannelId).toBe("chan-wordle");
-  });
-
-  it("ignores the streak from another channel's group", async () => {
-    h = await harness();
-    register(h, "111", "Ada");
-    h.store.config.primarySummaryChannelId = "chan-wordle";
-    h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
-
-    const otherGroup = {
-      ...SUMMARY_MESSAGE,
-      id: "sum-other",
-      channelId: "chan-plains",
-      content: SUMMARY.replace("12 day", "3 day"),
-    };
-    await h.summary.handleMessage(otherGroup);
+    await h.summary.handleMessage(lower);
 
     expect(h.store.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
-    expect(h.notifier.messages).toHaveLength(0);
   });
 
-  it("announces when its records disagree with the Activity streak", async () => {
+  it("locks the baseline after a scan and ignores later numbers", async () => {
     h = await harness();
     register(h, "111", "Ada");
-    h.store.config.streakSeed = { day: "2026-11-14", count: 5 };
+    h.summarySource.messagesByChannel.set("chan-wordle", [SUMMARY_MESSAGE]);
+
+    await h.summary.poll();
+
+    expect(h.store.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
+    expect(h.store.config.streakFrozen).toBe(true);
+
+    const higher = { ...SUMMARY_MESSAGE, id: "sum-higher", content: SUMMARY.replace("12 day", "99 day") };
+    await h.summary.handleMessage(higher);
+
+    expect(h.store.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
+  });
+
+  it("corrects a group summary that disagrees with the server streak", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
 
     expect(h.notifier.messages).toHaveLength(1);
     expect(h.notifier.messages[0]?.channelId).toBe("chan-wordle");
-    expect(h.notifier.messages[0]?.content).toContain("12");
-    expect(h.notifier.messages[0]?.content).toContain("my records had **0**");
+    expect(h.notifier.messages[0]?.content).toContain("**13**");
+    expect(h.notifier.messages[0]?.content).toContain("summary says 12");
   });
 
-  it("stays quiet when its records already match", async () => {
+  it("stays quiet when the group number matches the server streak", async () => {
     h = await harness();
     register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
     h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);

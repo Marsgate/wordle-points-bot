@@ -70,13 +70,13 @@ The bot never reads points from names and never edits nicknames.
   the streak.
 - The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
   streak still stands.
-- The Activity's summary reports the group streak, so the bot keeps its streak in sync
-  automatically. `/wordle-streak count:` still works for a manual seed.
-- A streak belongs to one Activity group, so the bot tracks **one channel** — the first one
-  that posted a summary. Other channels' summaries still score results, but never change
-  the streak or trigger a correction.
-- If the bot's own records disagree with that channel's number, it posts a short correction
-  there and adopts the Activity's count.
+- The streak **starts at the highest group streak** reported around setup (the initial scan
+  collects every channel's summary), then counts server-wide: each day with at least one
+  winner adds one. Later Activity numbers do not move it. `/wordle-streak count:` can
+  override it manually.
+- A group's own summary can disagree with the server-wide streak (different channel,
+  different group). When it does, the bot posts a short correction in that channel:
+  *"Um, actually — the server-wide streak is N days."*
 
 ## Roles and spoilers
 

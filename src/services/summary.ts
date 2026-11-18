@@ -22,7 +22,11 @@ function rank(entry: { guesses: number; solved: boolean }): number {
  * The summary is yesterday's results, posted the next morning, so this runs
  * after that day was closed: it reopens the day, merges the scores (keeping the
  * better of a share and the summary), and closes it again. Only registered
- * members are scored. The reported group streak seeds the streak counter.
+ * members are scored.
+ *
+ * The streak is the server's own count. The highest group streak reported
+ * around setup becomes the starting line; once locked, later Activity numbers
+ * are ignored and the bot simply counts days with a winner.
  */
 export class SummaryService {
   private memberCache: { at: number; members: MemberSummary[] } | null = null;
@@ -53,7 +57,7 @@ export class SummaryService {
     for (const channelId of channels) {
       try {
         const messages = await this.deps.source.fetchRecentMessages(channelId, 100);
-        // Oldest first, so a newer summary's streak wins over an older one.
+        // Oldest first, so the newest summary is considered last.
         messages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         for (const message of messages) {
           if (await this.process(message)) processed += 1;
@@ -62,6 +66,17 @@ export class SummaryService {
         this.deps.logger.warn(`Could not scan channel ${channelId} for a summary`, error);
       }
     }
+
+    // The scan is where every group's current streak can be seen at once, so
+    // this is the last chance to pick the highest before counting starts.
+    if (!config.streakFrozen && config.streakSeed) {
+      config.streakFrozen = true;
+      await this.deps.store.save();
+      this.deps.logger.info(
+        `Streak baseline locked at ${config.streakSeed.count} through ${config.streakSeed.day}.`,
+      );
+    }
+
     return processed;
   }
 
@@ -79,9 +94,11 @@ export class SummaryService {
     if (day.summaryMessageId === message.id) return false;
 
     // Days before the bot was set up were already part of any seeded totals;
-    // scoring them again would double-count. Remember them so rescans are quiet.
+    // scoring them again would double-count. They still count towards the
+    // starting streak, which is the highest group streak around setup.
     const startedOn = this.deps.store.config.startedOn;
     if (startedOn && summaryDay < startedOn) {
+      this.updateBaseline(summary.streak, summaryDay);
       day.summaryMessageId = message.id;
       await this.deps.store.save();
       this.deps.logger.info(`Summary for ${summaryDay} predates setup (${startedOn}); skipped.`);
@@ -90,24 +107,6 @@ export class SummaryService {
 
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);
-
-    // The streak belongs to one group, so only one channel's summaries drive it.
-    const config = this.deps.store.config;
-    const primary = config.primarySummaryChannelId ?? config.summaryChannelIds[0] ?? null;
-    if (!primary) config.primarySummaryChannelId = message.channelId;
-    const isPrimary = !primary || primary === message.channelId;
-
-    // What the bot believed about this day before the summary corrected it.
-    const priorSeed = config.streakSeed;
-    const before =
-      isPrimary && priorSeed
-        ? computeStreak({
-            wonDays: this.wonDays(),
-            today: summaryDay,
-            seed: priorSeed,
-            dayIsClosed: true,
-          }).current
-        : null;
 
     let applied = 0;
     for (const entry of resolved) {
@@ -128,14 +127,8 @@ export class SummaryService {
     }
 
     day.summaryMessageId = message.id;
+    this.updateBaseline(summary.streak, summaryDay);
 
-    if (summary.streak !== null && isPrimary) {
-      // Never let an older summary overwrite a newer streak.
-      const current = this.deps.store.config.streakSeed;
-      if (!current || summaryDay >= current.day) {
-        this.deps.store.config.streakSeed = { day: summaryDay, count: summary.streak };
-      }
-    }
     if (!this.deps.store.config.summaryChannelIds.includes(message.channelId)) {
       this.deps.store.config.summaryChannelIds.push(message.channelId);
     }
@@ -150,20 +143,41 @@ export class SummaryService {
         `streak ${summary.streak ?? "unknown"}.`,
     );
 
-    // Announce a disagreement with the Activity, once it has been synced.
-    if (before !== null && summary.streak !== null && before !== summary.streak) {
-      try {
-        await this.deps.notifier.send(
-          message.channelId,
-          `Streak check: my records had **${before}** ${before === 1 ? "day" : "days"}, ` +
-            `but the Activity reports **${summary.streak}**. Syncing to ${summary.streak}.`,
-        );
-      } catch (error) {
-        this.deps.logger.warn("Could not post the streak correction", error);
+    // The Activity counts the streak for its own group; the server-wide streak
+    // can differ once more than one channel plays. Correct the summary.
+    if (summary.streak !== null) {
+      const serverStreak = computeStreak({
+        wonDays: this.wonDays(),
+        today: summaryDay,
+        seed: this.deps.store.config.streakSeed,
+        dayIsClosed: true,
+      }).current;
+
+      if (serverStreak !== summary.streak) {
+        try {
+          await this.deps.notifier.send(
+            message.channelId,
+            `Um, actually — the server-wide streak is **${serverStreak}** ` +
+              `${serverStreak === 1 ? "day" : "days"}. This group's summary says ${summary.streak}.`,
+          );
+        } catch (error) {
+          this.deps.logger.warn("Could not post the streak correction", error);
+        }
       }
     }
 
     return true;
+  }
+
+  /** Keep the highest streak reported before the baseline is locked. */
+  private updateBaseline(streak: number | null, day: string): void {
+    const config = this.deps.store.config;
+    if (config.streakFrozen || streak === null) return;
+
+    const seed = config.streakSeed;
+    if (!seed || streak > seed.count || (streak === seed.count && day > seed.day)) {
+      config.streakSeed = { day, count: streak };
+    }
   }
 
   private wonDays(): string[] {
