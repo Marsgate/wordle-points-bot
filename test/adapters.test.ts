@@ -1,6 +1,6 @@
-import { Collection, type Client } from "discord.js";
+import { ChannelType, Collection, type Client } from "discord.js";
 import { describe, expect, it } from "vitest";
-import { DiscordMemberPort } from "../src/discord/adapters.js";
+import { DiscordMemberPort, DiscordNotifierPort } from "../src/discord/adapters.js";
 import { silentLogger } from "./helpers.js";
 
 interface FakeRole {
@@ -67,6 +67,25 @@ function fakeGuild() {
 
   return { client, member, roles, addedRoles, createdOptions };
 }
+
+describe("DiscordNotifierPort", () => {
+  it("never notifies anyone mentioned in the message", async () => {
+    const sent: Array<{ content: string; allowedMentions?: unknown }> = [];
+    const channel = {
+      type: ChannelType.GuildText,
+      send: async (payload: { content: string; allowedMentions?: unknown }) => {
+        sent.push(payload);
+      },
+    };
+    const client = { channels: { fetch: async () => channel } } as unknown as Client;
+
+    const port = new DiscordNotifierPort(client);
+    await port.send("chan-1", "Hi <@123>, you are not registered.");
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.allowedMentions).toEqual({ parse: [] });
+  });
+});
 
 describe("DiscordMemberPort", () => {
   it("creates a permissionless personal role and assigns it", async () => {

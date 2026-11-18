@@ -50,8 +50,10 @@ handy for testing, not needed in normal play.
   merged per day and ranked together, so a better score from another channel takes the
   prize. New Wordle channels are discovered by scanning all readable text channels.
 - Only **registered** members are scored. Unregistered players in the summary are ignored,
-  so they never take the prize — they get pinged in that channel instead, with a
+  so they never take the prize — they get a message in that channel naming them, with a
   **Register** button that opens a short form for their current total.
+- The bot never pings anyone: mentions are rendered without a notification, so nobody is
+  notified by the summary, the leaderboard or a command reply.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
   5→2, 6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out
   slightly more than 10 in total (a 3-way tie pays 10.5).
@@ -139,7 +141,7 @@ existing total); nicknames are never edited.
 ### Development
 
 ```powershell
-npm test          # 123 offline tests, no token or network needed
+npm test          # 125 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { runCommand, type CommandDeps } from "../src/commands/handlers.js";
-import { context, harness, options, recordResult, type Harness } from "./helpers.js";
+import { handleInteraction } from "../src/discord/commands.js";
+import { context, harness, options, recordResult, silentLogger, type Harness } from "./helpers.js";
 
 let h: Harness | undefined;
 
@@ -388,5 +389,33 @@ describe("unknown commands", () => {
     h = await harness();
     const reply = await runCommand("nope", context(), deps(h));
     expect(reply.content).toContain("Unknown command");
+  });
+});
+
+describe("interaction replies", () => {
+  it("never notify mentioned members", async () => {
+    h = await harness();
+    const replies: Array<{ content: string; allowedMentions?: unknown }> = [];
+
+    const interaction = {
+      guildId: "guild-1",
+      user: { id: "user-1", username: "tester" },
+      memberPermissions: { has: () => false },
+      commandName: "wordle-leaderboard",
+      options: { getString: () => "all", getNumber: () => null, getUser: () => null },
+      replied: false,
+      deferred: false,
+      reply: async (payload: (typeof replies)[number]) => {
+        replies.push(payload);
+      },
+      followUp: async (payload: (typeof replies)[number]) => {
+        replies.push(payload);
+      },
+    } as unknown as Parameters<typeof handleInteraction>[0];
+
+    await handleInteraction(interaction, deps(h), silentLogger);
+
+    expect(replies).toHaveLength(1);
+    expect(replies[0]?.allowedMentions).toEqual({ parse: [] });
   });
 });

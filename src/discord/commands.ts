@@ -108,7 +108,11 @@ export async function handleInteraction(
   logger: Logger,
 ): Promise<void> {
   if (!interaction.guildId) {
-    await interaction.reply({ content: "Use this bot inside a server.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "Use this bot inside a server.",
+      allowedMentions: { parse: [] },
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
@@ -125,6 +129,7 @@ export async function handleInteraction(
     const reply = await runCommand(interaction.commandName, context, deps);
     const payload = {
       content: reply.content,
+      allowedMentions: { parse: [] as const },
       ...(reply.ephemeral ? { flags: MessageFlags.Ephemeral as const } : {}),
     };
 
@@ -132,7 +137,11 @@ export async function handleInteraction(
     else await interaction.reply(payload);
   } catch (error) {
     logger.error(`Command /${interaction.commandName} failed`, error);
-    const payload = { content: "Something went wrong. Check the bot logs.", flags: MessageFlags.Ephemeral as const };
+    const payload = {
+      content: "Something went wrong. Check the bot logs.",
+      allowedMentions: { parse: [] as const },
+      flags: MessageFlags.Ephemeral as const,
+    };
     if (interaction.replied || interaction.deferred) await interaction.followUp(payload);
     else await interaction.reply(payload);
   }

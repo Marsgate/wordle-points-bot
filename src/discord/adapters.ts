@@ -118,7 +118,7 @@ export class DiscordNotifierPort implements NotifierPort {
       throw new Error(`channel ${channelId} is not a guild text channel`);
     }
 
-    const payload: MessageCreateOptions = { content, allowedMentions: { parse: ["users"] } };
+    const payload: MessageCreateOptions = { content, allowedMentions: { parse: [] } };
     if (button) {
       payload.components = [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
