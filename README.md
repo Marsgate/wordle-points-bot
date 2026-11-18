@@ -1,8 +1,8 @@
 # WordleScoreBot
 
-A self-hosted Discord bot that turns the server's daily Wordle results into points, keeps
-the scoreboard in a **personal role** named after the score (`13.5 points`), and locks a
-**spoiler channel** until you have finished the day's puzzle.
+A self-hosted Discord bot that turns the server's daily Wordle results into points and keeps
+the scoreboard in a **personal role** named after the score (`13.5 points`). Results come from
+the Wordle Activity's daily summary, so nobody has to paste share text.
 
 ## The basics
 
@@ -39,7 +39,6 @@ The bot never reads points from names and never edits nicknames.
 
 | Command | What it does |
 |---|---|
-| `/wordle-setup spoilers:` | Pick the channel that stays hidden until you finish |
 | `/wordle-close` | End today now and award points (later results today do not count) |
 | `/wordle-reopen` | Undo a close and let later results count again |
 | `/wordle-award user: points:` | Correct a total; halves and negatives allowed |
@@ -75,7 +74,7 @@ The bot never reads points from names and never edits nicknames.
   different group). When it does, the bot posts a short correction in that channel:
   *"Um, actually — the server-wide streak is N days."*
 
-## Roles and spoilers
+## Roles
 
 - One role per registered member, named `<total> points` (`13.5 points`, `0 points`,
   `-114 points`), created with no permissions. Colours band the totals: grey under 10,
@@ -84,9 +83,6 @@ The bot never reads points from names and never edits nicknames.
   needs no resync.
 - The role shows as a member's badge only if it is their highest role.
 - `/wordle-unregister` is the only thing that removes a role — not a zero total.
-- The spoiler channel is denied to `@everyone`. Because results now arrive with the next
-  morning's summary, there is no same-day unlock trigger; grant access manually if you
-  still use the channel.
 
 ---
 
@@ -137,17 +133,13 @@ npm start
 
 Then, in the server, once:
 
-```
-/wordle-setup spoilers:#wordle-spoilers
-```
-
 Members register themselves with `/wordle-register points:0` (or their existing total) and
 delete any points text from their own nicknames.
 
 ### Development
 
 ```powershell
-npm test          # 138 offline tests, no token or network needed
+npm test          # 126 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

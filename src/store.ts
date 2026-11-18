@@ -36,10 +36,7 @@ export interface PlayerRecord {
 
 export interface GuildConfig {
   guildId: string | null;
-  spoilerChannelId: string | null;
   timeZone: string;
-  /** Day whose spoiler access has already been reset, so restarts don't redo it. */
-  lastResetDay: string | null;
   /** Streak carried over from before the bot, null when not set. */
   streakSeed: StreakSeed | null;
   /** Channels where an Activity summary has been seen; polled for new ones. */
@@ -64,9 +61,7 @@ export function emptyData(timeZone: string): StoreData {
     version: 1,
     config: {
       guildId: null,
-      spoilerChannelId: null,
       timeZone,
-      lastResetDay: null,
       streakSeed: null,
       summaryChannelIds: [],
       streakFrozen: false,

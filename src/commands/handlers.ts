@@ -6,7 +6,6 @@ import type { JsonStore } from "../store.js";
 import type { DailyService } from "../services/daily.js";
 import type { DisplayService } from "../services/display.js";
 import { registerMember } from "../services/registration.js";
-import type { SpoilerPort } from "../services/ports.js";
 
 export interface CommandOptions {
   getString(name: string): string | null;
@@ -35,7 +34,6 @@ export interface CommandDeps {
   store: JsonStore;
   daily: DailyService;
   display: DisplayService;
-  spoilers: SpoilerPort | null;
   now: () => Date;
 }
 
@@ -121,42 +119,6 @@ function leaderboardAllTime(store: JsonStore): CommandReply {
  */
 export async function runCommand(name: string, ctx: CommandContext, deps: CommandDeps): Promise<CommandReply> {
   switch (name) {
-    case "wordle-setup": {
-      if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to configure Wordle.");
-
-      const spoilers = ctx.options.getChannel("spoilers");
-      if (!spoilers) {
-        return ephemeral("Choose the channel that stays hidden until someone finishes the puzzle.");
-      }
-
-      const config = deps.store.config;
-      config.guildId = ctx.guildId;
-      config.startedOn ??= dayKey(ctx.now, config.timeZone);
-      config.spoilerChannelId = spoilers.id;
-
-      let spoilerNote: string;
-      try {
-        await deps.spoilers?.lockDown();
-        spoilerNote = `${mentionChannel(spoilers.id)} (locked to @everyone; access is granted when a share is recorded)`;
-      } catch (error) {
-        spoilerNote = `configured, but I could not lock it down (${
-          error instanceof Error ? error.message : String(error)
-        }). Give me **Manage Roles** on that channel.`;
-      }
-
-      await deps.store.save();
-
-      return ephemeral(
-        [
-          "**Wordle bot configured**",
-          "Results: counted in every channel",
-          `Spoiler channel: ${spoilerNote}`,
-          `Day rolls over at midnight, ${config.timeZone}.`,
-          "Members: run `/wordle-register` once, then post your Wordle result anywhere.",
-        ].join("\n"),
-      );
-    }
-
     case "wordle-status": {
       const config = deps.store.config;
       const today = dayKey(ctx.now, config.timeZone);
@@ -171,7 +133,6 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
         [
           "**Wordle bot status**",
           "Results: scored from the Activity's daily summary",
-          `Spoiler channel: ${config.spoilerChannelId ? mentionChannel(config.spoilerChannelId) : "not set"}`,
           `Time zone: ${config.timeZone}`,
           `Registered players: ${registered}`,
           `Streak: ${streak.current} ${streak.current === 1 ? "day" : "days"} (best ${streak.best})`,

@@ -6,7 +6,6 @@ import type {
   Logger,
   MemberPort,
   NotifierPort,
-  SpoilerPort,
   SummaryMessage,
   SummarySourcePort,
 } from "../src/services/ports.js";
@@ -20,8 +19,6 @@ export const silentLogger: Logger = { info: () => {}, warn: () => {}, error: () 
 
 export const GUILD = "guild-1";
 export const WORDLE_CHANNEL = "chan-wordle";
-export const SPOILER_CHANNEL = "chan-spoilers";
-export const OTHER_CHANNEL = "chan-general";
 export const TZ = "America/Indianapolis";
 
 export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
@@ -80,27 +77,6 @@ export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
   return { port, nicknames, roles, calls };
 }
 
-export function fakeSpoilers() {
-  const members = new Set<string>();
-  const calls = { grants: [] as string[], revokes: 0, lockdowns: 0 };
-  const port: SpoilerPort = {
-    grant: async (userId) => {
-      members.add(userId);
-      calls.grants.push(userId);
-    },
-    revokeAll: async () => {
-      calls.revokes += 1;
-      const count = members.size;
-      members.clear();
-      return count;
-    },
-    lockDown: async () => {
-      calls.lockdowns += 1;
-    },
-  };
-  return { port, members, calls };
-}
-
 export function fakeNotifier() {
   const messages: Array<{
     channelId: string;
@@ -150,7 +126,6 @@ export interface Harness {
   dir: string;
   store: JsonStore;
   members: ReturnType<typeof fakeMemberPort>;
-  spoilers: ReturnType<typeof fakeSpoilers>;
   display: DisplayService;
   daily: DailyService;
   summary: SummaryService;
@@ -169,7 +144,6 @@ export async function harness(
     timeZone?: string;
     now?: () => Date;
     configure?: boolean;
-    withSpoilers?: boolean;
     /** Members pre-registered at 0 points. Defaults to the usual author. */
     registered?: string[];
   } = {},
@@ -179,7 +153,6 @@ export async function harness(
 
   if (options.configure !== false) {
     store.config.guildId = GUILD;
-    store.config.spoilerChannelId = options.withSpoilers === false ? null : SPOILER_CHANNEL;
   }
 
   for (const userId of options.registered ?? ["user-1"]) {
@@ -188,7 +161,6 @@ export async function harness(
   await store.save();
 
   const members = fakeMemberPort(options.nicknames);
-  const spoilers = fakeSpoilers();
   const summarySource = fakeSummarySource();
   const notifier = fakeNotifier();
   const now = options.now ?? (() => new Date("2026-11-16T20:00:00Z"));
@@ -197,7 +169,6 @@ export async function harness(
   const daily = new DailyService({
     store,
     display,
-    spoilers: spoilers.port,
     logger: silentLogger,
     timeZone: () => store.config.timeZone,
     now,
@@ -216,7 +187,6 @@ export async function harness(
     dir,
     store,
     members,
-    spoilers,
     display,
     daily,
     summary,
@@ -227,7 +197,6 @@ export async function harness(
 }
 
 export function options(values: {
-  spoilers?: { id: string; name: string } | null;
   scope?: string | null;
   user?: { id: string; name: string } | null;
   points?: number | null;
@@ -242,7 +211,7 @@ export function options(values: {
       return null;
     },
     getUser: (name) => (name === "user" ? (values.user ?? null) : null),
-    getChannel: (name) => (name === "spoilers" ? (values.spoilers ?? null) : null),
+    getChannel: () => null,
   };
 }
 

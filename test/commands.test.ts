@@ -14,7 +14,6 @@ function deps(test: Harness): CommandDeps {
     store: test.store,
     daily: test.daily,
     display: test.display,
-    spoilers: test.spoilers.port,
     now: () => new Date("2026-11-16T20:00:00Z"),
   };
 }
@@ -23,61 +22,6 @@ async function post(test: Harness, userId: string, guesses: number, solved = tru
   recordResult(test, userId, guesses, solved);
 }
 
-describe("/wordle-setup", () => {
-  it("stores the spoiler channel and locks it", async () => {
-    h = await harness({ configure: false });
-    const reply = await runCommand(
-      "wordle-setup",
-      context({ options: options({ spoilers: { id: "spoilers-new", name: "spoilers" } }) }),
-      deps(h),
-    );
-
-    expect(reply.ephemeral).toBe(true);
-    expect(reply.content).toContain("<#spoilers-new>");
-    expect(reply.content).toContain("counted in every channel");
-    expect(h.store.config.spoilerChannelId).toBe("spoilers-new");
-    expect(h.store.config.timeZone).toBe("America/Indianapolis");
-    expect(h.store.config.startedOn).toBe("2026-11-16");
-    expect(h.spoilers.calls.lockdowns).toBe(1);
-  });
-
-  it("refuses non-admins", async () => {
-    h = await harness({ configure: false });
-    const reply = await runCommand(
-      "wordle-setup",
-      context({ isAdmin: false, options: options({ spoilers: { id: "spoilers-new", name: "spoilers" } }) }),
-      deps(h),
-    );
-
-    expect(reply.content).toContain("Manage Server");
-    expect(h.store.config.spoilerChannelId).toBeNull();
-  });
-
-  it("requires a spoiler channel", async () => {
-    h = await harness({ configure: false });
-    const reply = await runCommand("wordle-setup", context(), deps(h));
-
-    expect(reply.content).toContain("Choose the channel");
-    expect(h.store.config.spoilerChannelId).toBeNull();
-  });
-
-  it("keeps the configuration when the spoiler channel cannot be locked", async () => {
-    h = await harness({ configure: false });
-    h.spoilers.port.lockDown = async () => {
-      throw new Error("Missing Access");
-    };
-
-    const reply = await runCommand(
-      "wordle-setup",
-      context({ options: options({ spoilers: { id: "spoilers-new", name: "spoilers" } }) }),
-      deps(h),
-    );
-
-    expect(reply.content).toContain("could not lock it down");
-    expect(h.store.config.spoilerChannelId).toBe("spoilers-new");
-  });
-});
-
 describe("/wordle-status", () => {
   it("shows configuration, registrations and the streak", async () => {
     h = await harness();
@@ -85,7 +29,6 @@ describe("/wordle-status", () => {
 
     const reply = await runCommand("wordle-status", context(), deps(h));
 
-    expect(reply.content).toContain("<#chan-spoilers>");
     expect(reply.content).toContain("America/Indianapolis");
     expect(reply.content).toContain("Registered players: 1");
     expect(reply.content).toContain("Activity's daily summary");

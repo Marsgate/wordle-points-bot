@@ -8,7 +8,7 @@ import { JsonStore } from "./store.js";
 import { DailyService } from "./services/daily.js";
 import { DisplayService } from "./services/display.js";
 import { SummaryService } from "./services/summary.js";
-import { DiscordMemberPort, DiscordNotifierPort, DiscordSpoilerPort, DiscordSummarySource } from "./discord/adapters.js";
+import { DiscordMemberPort, DiscordNotifierPort, DiscordSummarySource } from "./discord/adapters.js";
 import { registerCommands, registerGuildCommands } from "./discord/commands.js";
 import { attachEvents } from "./discord/events.js";
 
@@ -46,11 +46,9 @@ async function main(): Promise<void> {
 
   const memberPort = new DiscordMemberPort(client, () => store.config.guildId, logger);
   const display = new DisplayService({ port: memberPort, logger });
-  const spoilers = new DiscordSpoilerPort(client, () => store.config.spoilerChannelId, logger);
   const daily = new DailyService({
     store,
     display,
-    spoilers,
     logger,
     timeZone: () => store.config.timeZone,
     now: () => new Date(),
@@ -69,7 +67,7 @@ async function main(): Promise<void> {
   attachEvents(client, {
     summary,
     logger,
-    commands: { store, daily, display, spoilers, now: () => new Date() },
+    commands: { store, daily, display, now: () => new Date() },
   });
 
   let ticking = false;
@@ -112,8 +110,8 @@ async function main(): Promise<void> {
         logger.warn("In more than one server; run /wordle-setup in the one you want scored.");
       }
 
-      if (!store.config.spoilerChannelId) {
-        logger.info("No spoiler channel configured yet. An admin can run /wordle-setup to add one.");
+      if (!store.config.guildId) {
+        logger.info("No guild configured yet; invite the bot or run it in one server.");
       }
 
       try {

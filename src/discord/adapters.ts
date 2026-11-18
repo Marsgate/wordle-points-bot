@@ -3,24 +3,12 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
-  OverwriteType,
-  PermissionFlagsBits,
   type Client,
   type Guild,
   type MessageCreateOptions,
-  type NewsChannel,
   type Role,
-  type TextChannel,
 } from "discord.js";
-import type {
-  Logger,
-  MemberPort,
-  MemberSummary,
-  NotifierPort,
-  SpoilerPort,
-  SummaryMessage,
-  SummarySourcePort,
-} from "../services/ports.js";
+import type { Logger, MemberPort, MemberSummary, NotifierPort, SummaryMessage, SummarySourcePort } from "../services/ports.js";
 
 /**
  * The member-facing surface: a personal points role per player, plus read/write
@@ -118,71 +106,6 @@ export class DiscordMemberPort implements MemberPort {
     if (!role) return false;
     await role.delete("Wordle points removed");
     return true;
-  }
-}
-
-/** Per-member overwrites on the spoiler channel: the only access control Discord gives us. */
-export class DiscordSpoilerPort implements SpoilerPort {
-  constructor(
-    private readonly client: Client,
-    private readonly channelId: () => string | null,
-    private readonly logger: Logger,
-  ) {}
-
-  private async requireChannel(): Promise<TextChannel | NewsChannel> {
-    const id = this.channelId();
-    if (!id) throw new Error("no spoiler channel configured");
-
-    const channel = await this.client.channels.fetch(id);
-    if (!channel) throw new Error(`channel ${id} does not exist`);
-    if (channel.type !== ChannelType.GuildText && channel.type !== ChannelType.GuildAnnouncement) {
-      throw new Error(`channel ${id} is not a guild text channel`);
-    }
-    return channel;
-  }
-
-  async grant(userId: string): Promise<void> {
-    const channel = await this.requireChannel();
-
-    // Owners, admins and members whose roles already allow View Channel need no
-    // overwrite — and Discord refuses to edit overwrites for members above the
-    // bot anyway, so skipping avoids a pointless 50001.
-    const member = await channel.guild.members.fetch(userId).catch(() => null);
-    if (member && channel.permissionsFor(member)?.has(PermissionFlagsBits.ViewChannel)) {
-      return;
-    }
-
-    // The explicit type matters: without it discord.js resolves the id to a
-    // cached User and throws for members who are not in the cache.
-    await channel.permissionOverwrites.edit(
-      userId,
-      { ViewChannel: true },
-      { type: OverwriteType.Member, reason: "Completed today's Wordle" },
-    );
-  }
-
-  async revokeAll(): Promise<number> {
-    const channel = await this.requireChannel();
-    const memberOverwrites = channel.permissionOverwrites.cache.filter(
-      (overwrite) => overwrite.type === OverwriteType.Member,
-    );
-
-    let removed = 0;
-    for (const overwrite of memberOverwrites.values()) {
-      await channel.permissionOverwrites.delete(overwrite.id, "New Wordle day");
-      removed += 1;
-    }
-    this.logger.info(`Removed ${removed} member overwrite(s) from spoiler channel ${channel.id}`);
-    return removed;
-  }
-
-  async lockDown(): Promise<void> {
-    const channel = await this.requireChannel();
-    await channel.permissionOverwrites.edit(
-      channel.guild.roles.everyone,
-      { ViewChannel: false },
-      { reason: "Wordle spoiler channel: locked until you finish the day's puzzle" },
-    );
   }
 }
 

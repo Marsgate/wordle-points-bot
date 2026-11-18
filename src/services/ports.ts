@@ -25,15 +25,6 @@ export interface MemberPort {
   deleteRole(roleId: string): Promise<boolean>;
 }
 
-export interface SpoilerPort {
-  /** Give one member access to the spoiler channel. Must be idempotent. */
-  grant(userId: string): Promise<void>;
-  /** Remove every member overwrite the bot manages. Returns how many were removed. */
-  revokeAll(): Promise<number>;
-  /** Deny @everyone by default, leaving the channel locked for everyone else. */
-  lockDown(): Promise<void>;
-}
-
 /** A single button attached to a bot message. */
 export interface NotifierButton {
   label: string;

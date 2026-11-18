@@ -2,7 +2,7 @@ import { dayKey } from "../core/day.js";
 import { roundToHalf, scoreDay, type Winner } from "../core/scoring.js";
 import type { JsonStore } from "../store.js";
 import type { DisplayService } from "./display.js";
-import type { Logger, SpoilerPort } from "./ports.js";
+import type { Logger } from "./ports.js";
 
 export interface FinalizeReport {
   day: string;
@@ -16,7 +16,6 @@ export interface FinalizeReport {
 export interface RolloverReport {
   today: string;
   finalized: string[];
-  spoilerMembersRevoked: number;
 }
 
 /**
@@ -33,7 +32,6 @@ export class DailyService {
     private readonly deps: {
       store: JsonStore;
       display: DisplayService;
-      spoilers: SpoilerPort | null;
       logger: Logger;
       timeZone: () => string;
       now: () => Date;
@@ -89,7 +87,7 @@ export class DailyService {
     }
   }
 
-  /** Finalize anything that ended while the bot was offline, then reset spoilers. */
+  /** Finalize anything that ended while the bot was offline. */
   async rollover(now: Date = this.deps.now()): Promise<RolloverReport> {
     const today = dayKey(now, this.deps.timeZone());
     const finalized: string[] = [];
@@ -99,25 +97,12 @@ export class DailyService {
       if (!report.skipped) finalized.push(key);
     }
 
-    let spoilerMembersRevoked = 0;
-    const config = this.deps.store.config;
-    if (config.spoilerChannelId && this.deps.spoilers && config.lastResetDay !== today) {
-      try {
-        spoilerMembersRevoked = await this.deps.spoilers.revokeAll();
-      } catch (error) {
-        this.deps.logger.warn("Could not reset spoiler channel access", error);
-      }
-      config.lastResetDay = today;
-      await this.deps.store.save();
-      this.deps.logger.info(`Spoiler channel reset for ${today}: ${spoilerMembersRevoked} member(s) revoked.`);
-    }
-
-    return { today, finalized, spoilerMembersRevoked };
+    return { today, finalized };
   }
 
   /**
    * Undo a close: take the day's awarded points back out of the totals, refresh
-   * the roles, and leave the day open so later shares count again.
+   * the roles, and leave the day open so later results count again.
    */
   async reopenDay(key: string): Promise<{ reopened: boolean; reverted: number }> {
     const day = this.deps.store.data.days[key];

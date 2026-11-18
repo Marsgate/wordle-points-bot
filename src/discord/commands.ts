@@ -1,5 +1,4 @@
 import {
-  ChannelType,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
@@ -14,16 +13,6 @@ const builder = (name: string, description: string): SlashCommandBuilder =>
   new SlashCommandBuilder().setName(name).setDescription(description);
 
 export const commandDefinitions = [
-  builder("wordle-setup", "Choose the channel that stays hidden until someone finishes the puzzle")
-    .addChannelOption((option) =>
-      option
-        .setName("spoilers")
-        .setDescription("Channel hidden until a member finishes the day's Wordle")
-        .addChannelTypes(ChannelType.GuildText)
-        .setRequired(true),
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-
   builder("wordle-register", "Join the points game and enter your current total").addNumberOption((option) =>
     option
       .setName("points")

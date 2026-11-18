@@ -22,7 +22,7 @@ describe("slash command definitions", () => {
   it("are unique, valid chat-input commands", () => {
     const names = definitions.map((command) => command.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toHaveLength(11);
+    expect(names).toHaveLength(10);
 
     for (const command of definitions) {
       expect(command.name).toMatch(/^[a-z0-9-]{1,32}$/u);
@@ -44,13 +44,7 @@ describe("slash command definitions", () => {
     }
   });
 
-  it("requires only the spoiler channel and offers today/all scopes", () => {
-    const setup = definitions.find((command) => command.name === "wordle-setup");
-    const spoilers = setup?.options?.find((option) => option.name === "spoilers");
-    expect(spoilers?.type).toBe(7); // CHANNEL
-    expect(spoilers?.required).toBe(true);
-    expect(setup?.options).toHaveLength(1);
-
+  it("offers all-time first on the leaderboard", () => {
     const leaderboard = definitions.find((command) => command.name === "wordle-leaderboard");
     const scope = leaderboard?.options?.find((option) => option.name === "scope");
     expect(scope?.choices?.map((choice) => choice.value)).toEqual(["all", "today"]);

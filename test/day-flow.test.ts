@@ -16,7 +16,6 @@ async function post(
   at: string,
 ): Promise<void> {
   recordResult(test, userId, guesses, solved, at);
-  await test.spoilers.port.grant(userId);
 }
 
 function roleNamed(test: Harness, name: string) {
@@ -24,7 +23,7 @@ function roleNamed(test: Harness, name: string) {
 }
 
 describe("two days end to end", () => {
-  it("scores, syncs roles, unlocks and relocks the spoiler channel", async () => {
+  it("scores and syncs roles across two days", async () => {
     h = await harness({
       nicknames: {
         "u-ada": "𝓐𝓭𝓪 ✦",
@@ -39,14 +38,11 @@ describe("two days end to end", () => {
     await post(h, "u-grace", 3, true, "2026-11-16T14:10:00Z");
     await post(h, "u-linus", 3, true, "2026-11-16T14:20:00Z");
     await post(h, "u-margaret", 6, false, "2026-11-16T15:00:00Z");
-
-    expect(h.spoilers.members.size).toBe(4);
     expect(h.store.data.players["u-ada"]?.total).toBe(0);
     expect(h.members.roles.size).toBe(0);
 
     const firstMidnight = await h.daily.rollover(new Date("2026-11-17T05:00:30Z"));
     expect(firstMidnight.finalized).toEqual(["2026-11-16"]);
-    expect(firstMidnight.spoilerMembersRevoked).toBe(4);
 
     expect(h.store.data.players["u-ada"]?.total).toBe(3.5);
     expect(h.store.data.players["u-margaret"]?.total).toBe(0);
@@ -64,7 +60,6 @@ describe("two days end to end", () => {
 
     // Nicknames are no longer rewritten.
     expect(h.members.nicknames.get("u-ada")).toBe("𝓐𝓭𝓪 ✦");
-    expect(h.spoilers.members.size).toBe(0);
 
     // --- Day 2: Ada wins outright -----------------------------------------
     await post(h, "u-ada", 2, true, "2026-11-17T13:00:00Z");

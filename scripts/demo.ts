@@ -11,7 +11,7 @@ import { DailyService } from "../src/services/daily.js";
 import { DisplayService } from "../src/services/display.js";
 import { registerMember } from "../src/services/registration.js";
 import { SummaryService } from "../src/services/summary.js";
-import type { Logger, MemberPort, NotifierPort, SpoilerPort } from "../src/services/ports.js";
+import type { Logger, MemberPort, NotifierPort } from "../src/services/ports.js";
 import { JsonStore } from "../src/store.js";
 
 const TZ = "America/Indianapolis";
@@ -30,7 +30,6 @@ const nicknames = new Map<string, string>([
   ["444", "Margaret"],
 ]);
 const roles = new Map<string, { name: string; color: number; members: Set<string> }>();
-const spoilerAccess = new Set<string>();
 const sent: string[] = [];
 let roleSequence = 0;
 
@@ -73,17 +72,6 @@ const memberPort: MemberPort = {
   deleteRole: async (roleId) => roles.delete(roleId),
 };
 
-const spoilerPort: SpoilerPort = {
-  grant: async (userId) => {
-    spoilerAccess.add(userId);
-  },
-  revokeAll: async () => {
-    const count = spoilerAccess.size;
-    spoilerAccess.clear();
-    return count;
-  },
-  lockDown: async () => {},
-};
 
 const notifier: NotifierPort = {
   send: async (_channelId, content) => {
@@ -105,7 +93,6 @@ async function main(): Promise<void> {
   try {
     const store = await JsonStore.open(join(dir, "store.json"), TZ);
     store.config.guildId = GUILD;
-    store.config.spoilerChannelId = "wordle-spoilers";
     store.config.startedOn = "2026-11-16";
     await store.save();
 
@@ -129,7 +116,6 @@ async function main(): Promise<void> {
     const daily = new DailyService({
       store,
       display,
-      spoilers: spoilerPort,
       logger,
       timeZone: () => store.config.timeZone,
       now: () => new Date("2026-11-17T12:00:00Z"),
@@ -178,7 +164,6 @@ async function main(): Promise<void> {
     banner("Streak");
     const seed = store.config.streakSeed;
     console.log(`   baseline ${seed?.count} through ${seed?.day} (read from the summary)`);
-    console.log(`   spoiled members: ${spoilerAccess.size} (no share step needed)`);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

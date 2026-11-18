@@ -16,7 +16,6 @@ async function post(
   at = "2026-11-16T14:00:00Z",
 ): Promise<void> {
   recordResult(test, userId, guesses, solved, at);
-  await test.spoilers.port.grant(userId);
 }
 
 function roleNamed(test: Harness, name: string) {
@@ -148,33 +147,6 @@ describe("DailyService.rollover", () => {
     expect(report.finalized).toEqual([]);
     expect(h.store.data.days["2026-11-16"]?.finalized).toBe(false);
     expect(h.store.data.players["user-1"]?.total).toBe(0);
-  });
-
-  it("revokes spoiler access exactly once per day boundary", async () => {
-    h = await harness();
-    await post(h, "user-1", 3);
-
-    const first = await h.daily.rollover(new Date("2026-11-17T05:00:30Z"));
-    expect(first.spoilerMembersRevoked).toBe(1);
-    expect(h.spoilers.members.size).toBe(0);
-    expect(h.spoilers.calls.revokes).toBe(1);
-
-    // A restart later the same day must not revoke again.
-    await h.daily.rollover(new Date("2026-11-17T18:00:00Z"));
-    expect(h.spoilers.calls.revokes).toBe(1);
-
-    // The next boundary does.
-    await h.daily.rollover(new Date("2026-11-18T05:00:30Z"));
-    expect(h.spoilers.calls.revokes).toBe(2);
-  });
-
-  it("skips the revoke when no spoiler channel is configured", async () => {
-    h = await harness({ withSpoilers: false });
-    await post(h, "user-1", 3);
-
-    const report = await h.daily.rollover(new Date("2026-11-17T05:00:30Z"));
-    expect(report.spoilerMembersRevoked).toBe(0);
-    expect(h.spoilers.calls.revokes).toBe(0);
   });
 
   it("does not let a new day inherit yesterday's entry", async () => {

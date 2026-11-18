@@ -22,14 +22,14 @@ describe("JsonStore", () => {
   it("starts from defaults when the file is missing", async () => {
     const store = await JsonStore.open(file, TZ);
     expect(store.config.timeZone).toBe(TZ);
-    expect(store.config.spoilerChannelId).toBeNull();
+    expect(store.config.streakSeed).toBeNull();
     expect(store.data.players).toEqual({});
     expect(store.data.days).toEqual({});
   });
 
   it("persists across reopen", async () => {
     const store = await JsonStore.open(file, TZ);
-    store.config.spoilerChannelId = "chan-2";
+    store.config.streakSeed = { day: "2026-11-15", count: 12 };
     store.player("user-1", "tester").total = 7.5;
     store.day("2026-11-16").entries["user-1"] = {
       userId: "user-1",
@@ -42,7 +42,7 @@ describe("JsonStore", () => {
     await store.save();
 
     const reopened = await JsonStore.open(file, TZ);
-    expect(reopened.config.spoilerChannelId).toBe("chan-2");
+    expect(reopened.config.streakSeed).toEqual({ day: "2026-11-15", count: 12 });
     expect(reopened.data.players["user-1"]?.total).toBe(7.5);
     expect(reopened.data.days["2026-11-16"]?.entries["user-1"]?.guesses).toBe(3);
   });
