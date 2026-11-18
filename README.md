@@ -33,7 +33,6 @@ The bot never reads points from names and never edits nicknames.
 | `/points [user:]` | Your total, wins, and today's standing |
 | `/wordle-leaderboard [scope:]` | Overall point totals by default, or today's ranking |
 | `/wordle-streak [count:]` | The server's day streak; admins can set it (0 clears) |
-| `/wordle-status` | Configuration, registered count and streak |
 
 **For admins**
 
@@ -139,7 +138,7 @@ existing total); nicknames are never edited.
 ### Development
 
 ```powershell
-npm test          # 128 offline tests, no token or network needed
+npm test          # 127 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

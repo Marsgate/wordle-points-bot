@@ -23,21 +23,6 @@ async function post(test: Harness, userId: string, guesses: number, solved = tru
   recordResult(test, userId, guesses, solved);
 }
 
-describe("/wordle-status", () => {
-  it("shows configuration, registrations and the streak", async () => {
-    h = await harness();
-    h.store.config.streakSeed = { day: "2026-11-15", count: 12 };
-
-    const reply = await runCommand("wordle-status", context(), deps(h));
-
-    expect(reply.content).toContain("America/Indianapolis");
-    expect(reply.content).toContain("Registered players: 1");
-    expect(reply.content).toContain("Activity's daily summary");
-    expect(reply.content).toContain("Streak: 12 days");
-    expect(reply.content).not.toContain("share");
-  });
-});
-
 describe("/wordle-leaderboard", () => {
   it("says so when the day is empty", async () => {
     h = await harness();

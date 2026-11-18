@@ -124,27 +124,6 @@ function leaderboardAllTime(store: JsonStore): CommandReply {
  */
 export async function runCommand(name: string, ctx: CommandContext, deps: CommandDeps): Promise<CommandReply> {
   switch (name) {
-    case "wordle-status": {
-      const config = deps.store.config;
-      const today = dayKey(ctx.now, config.timeZone);
-      const registered = Object.values(deps.store.data.players).filter((player) => player.registered).length;
-      const streak = computeStreak({
-        wonDays: wonDays(deps.store),
-        today,
-        seed: config.streakSeed,
-      });
-
-      return ephemeral(
-        [
-          "**Wordle bot status**",
-          "Results: scored from the Activity's daily summary",
-          `Time zone: ${config.timeZone}`,
-          `Registered players: ${registered}`,
-          `Streak: ${streak.current} ${streak.current === 1 ? "day" : "days"} (best ${streak.best})`,
-        ].join("\n"),
-      );
-    }
-
     case "wordle-leaderboard": {
       const scope = ctx.options.getString("scope") ?? "all";
       return scope === "today" ? leaderboardToday(deps.store, ctx.now) : leaderboardAllTime(deps.store);

@@ -21,8 +21,6 @@ export function commandDefinitions(includeDebug = false) {
         .setRequired(true),
     ),
 
-    builder("wordle-status", "Show the current Wordle bot configuration"),
-
     builder("wordle-leaderboard", "Show overall point totals (or today's ranking)").addStringOption((option) =>
       option
         .setName("scope")

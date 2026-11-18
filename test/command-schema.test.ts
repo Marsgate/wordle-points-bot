@@ -23,7 +23,7 @@ describe("slash command definitions", () => {
   it("are unique, valid chat-input commands", () => {
     const names = definitions.map((command) => command.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toHaveLength(8);
+    expect(names).toHaveLength(7);
 
     for (const command of definitions) {
       expect(command.name).toMatch(/^[a-z0-9-]{1,32}$/u);
