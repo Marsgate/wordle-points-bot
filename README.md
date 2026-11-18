@@ -49,8 +49,10 @@ handy for testing, not needed in normal play.
 - Results come from the Activity's **daily summary**, one per group/channel; they are
   merged per day and ranked together, so a better score from another channel takes the
   prize. New Wordle channels are discovered by scanning all readable text channels.
-- Only **registered** members are scored. Unregistered players in the summary are ignored,
-  so they never take the prize — they get a message in that channel naming them, with a
+- Everyone who finishes takes part in the split, but **only registered members are paid**.
+  Tie with an unregistered player at 3/6 and the 10 points split 5/5: you get 5, they get
+  nothing.
+- Unregistered players who finish get a message in that channel naming them, with a
   **Register** button that opens a short form for their current total.
 - The bot never pings anyone: mentions are rendered without a notification, so nobody is
   notified by the summary, the leaderboard or a command reply.
@@ -141,7 +143,7 @@ existing total); nicknames are never edited.
 ### Development
 
 ```powershell
-npm test          # 125 offline tests, no token or network needed
+npm test          # 128 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

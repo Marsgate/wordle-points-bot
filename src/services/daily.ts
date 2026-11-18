@@ -45,17 +45,22 @@ export class DailyService {
     this.finalizing.add(key);
     try {
       const score = scoreDay(Object.values(day.entries));
-      day.points = score.points;
+      const isRegistered = (userId: string) =>
+        this.deps.store.data.players[userId]?.registered === true;
+
+      // Everyone takes part in the split, but only registered members are paid.
+      const winners = score.winners.filter((winner) => isRegistered(winner.userId));
+      day.points = Object.fromEntries(
+        Object.entries(score.points).filter(([userId]) => isRegistered(userId)),
+      );
       day.finalized = true;
       day.finalizedAt = this.deps.now().toISOString();
 
       const updated: string[] = [];
       const failures: Array<{ userId: string; reason: string }> = [];
 
-      for (const winner of score.winners) {
+      for (const winner of winners) {
         const player = this.deps.store.player(winner.userId);
-        // Someone who left the game before the close does not get the prize.
-        if (!player.registered) continue;
 
         player.total = roundToHalf(player.total + winner.points);
 
@@ -75,11 +80,11 @@ export class DailyService {
 
       await this.deps.store.save();
       this.deps.logger.info(
-        `Closed ${key}: ${score.winners.length} winner(s), ${score.players} entrant(s), ` +
+        `Closed ${key}: ${winners.length} winner(s), ${score.players} entrant(s), ` +
           `${updated.length} points role(s) synced.`,
       );
 
-      return { skipped: false, winners: score.winners, updated, failures };
+      return { skipped: false, winners, updated, failures };
     } finally {
       this.finalizing.delete(key);
     }

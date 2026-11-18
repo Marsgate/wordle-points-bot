@@ -41,12 +41,44 @@ describe("SummaryService", () => {
     const day = h.store.data.days["2026-11-15"];
     expect(day?.entries["111"]).toMatchObject({ guesses: 3, solved: true });
     expect(day?.entries["222"]).toMatchObject({ guesses: 4, solved: true });
-    expect(day?.entries["333"]).toBeUndefined();
+    expect(day?.entries["333"]).toMatchObject({ guesses: 6, solved: false });
     expect(day?.finalized).toBe(true);
     expect(day?.points).toEqual({ "111": 10 });
     expect(h.store.data.players["111"]?.total).toBe(10);
     expect(h.store.data.players["222"]?.total).toBe(0);
     expect([...h.members.roles.values()][0]?.name).toBe("10 points");
+  });
+
+  it("splits a tie with an unregistered player but only pays the registered one", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    const tied = {
+      ...SUMMARY_MESSAGE,
+      content:
+        "**Your group is on a 12 day streak!** Here are yesterday's results:\n3/6: <@111> <@333>",
+    };
+    await h.summary.handleMessage(tied);
+
+    const day = h.store.data.days["2026-11-15"];
+    expect(day?.entries["333"]).toMatchObject({ guesses: 3, solved: true });
+    expect(day?.points).toEqual({ "111": 5 });
+    expect(h.store.data.players["111"]?.total).toBe(5);
+    expect(h.store.data.players["333"]).toBeUndefined();
+  });
+
+  it("awards nothing when only unregistered players solved", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    const ghostsOnly = {
+      ...SUMMARY_MESSAGE,
+      content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n2/6: <@333>",
+    };
+    await h.summary.handleMessage(ghostsOnly);
+
+    expect(h.store.data.days["2026-11-15"]?.points).toEqual({});
+    expect(h.store.data.players["111"]?.total).toBe(0);
   });
 
   it("syncs the reported group streak", async () => {
@@ -198,14 +230,15 @@ describe("SummaryService", () => {
     expect(await h.summary.handleMessage(SUMMARY_MESSAGE)).toBe(false);
   });
 
-  it("skips unregistered players", async () => {
+  it("keeps unregistered players out of the points", async () => {
     h = await harness();
     register(h, "111", "Ada");
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
 
-    expect(h.store.data.days["2026-11-15"]?.entries["333"]).toBeUndefined();
+    expect(h.store.data.days["2026-11-15"]?.entries["333"]).toMatchObject({ solved: false });
     expect(h.store.data.players["333"]).toBeUndefined();
+    expect(h.store.data.days["2026-11-15"]?.points).toEqual({ "111": 10 });
   });
 
   it("polls history and applies a summary once", async () => {

@@ -47,6 +47,27 @@ describe("/wordle-leaderboard", () => {
     expect(reply.content).toContain("Provisional");
   });
 
+  it("hides unregistered players but keeps their share of the split", async () => {
+    h = await harness();
+    await post(h, "user-1", 3);
+    h.store.day("2026-11-16").entries["ghost-1"] = {
+      userId: "ghost-1",
+      guesses: 3,
+      solved: true,
+      messageId: "m",
+      recordedAt: "2026-11-16T15:00:00Z",
+    };
+
+    const reply = await runCommand(
+      "wordle-leaderboard",
+      context({ options: options({ scope: "today" }) }),
+      deps(h),
+    );
+
+    expect(reply.content).toContain("5 pts");
+    expect(reply.content).not.toContain("ghost-1");
+  });
+
   it("shows the all-time board sorted by points", async () => {
     h = await harness();
     h.store.player("user-1", "one").total = 5;

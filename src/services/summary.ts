@@ -121,15 +121,11 @@ export class SummaryService {
     const unregistered = new Set<string>();
 
     for (const entry of resolved) {
-      const player = this.deps.store.data.players[entry.userId];
-      if (!player?.registered) {
-        unregistered.add(entry.userId);
-        continue;
-      }
-
       const existing = day.entries[entry.userId];
       if (existing && rank(existing) <= rank(entry)) continue;
 
+      // Unregistered players are kept in the day so they still take a share of
+      // the prize; the share itself is simply never awarded to them.
       day.entries[entry.userId] = {
         userId: entry.userId,
         guesses: entry.guesses,
@@ -138,6 +134,10 @@ export class SummaryService {
         recordedAt: message.createdAt.toISOString(),
       };
       applied += 1;
+
+      if (!this.deps.store.data.players[entry.userId]?.registered) {
+        unregistered.add(entry.userId);
+      }
     }
 
     day.summaryMessageId = message.id;
@@ -207,7 +207,11 @@ export class SummaryService {
 
   private wonDays(): string[] {
     return Object.values(this.deps.store.data.days)
-      .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
+      .filter((day) =>
+        Object.values(day.entries).some(
+          (entry) => entry.solved && this.deps.store.data.players[entry.userId]?.registered,
+        ),
+      )
       .map((day) => day.key);
   }
 

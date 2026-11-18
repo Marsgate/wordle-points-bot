@@ -55,16 +55,25 @@ function rankOf(entry: ScoredEntry): number {
   return entry.solved ? entry.guesses : 7;
 }
 
-/** Days on which at least one member solved the puzzle. */
+/** Days on which at least one registered member solved the puzzle. */
 function wonDays(store: JsonStore): string[] {
   return Object.values(store.data.days)
-    .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
+    .filter((day) =>
+      Object.values(day.entries).some(
+        (entry) => entry.solved && store.data.players[entry.userId]?.registered,
+      ),
+    )
     .map((day) => day.key);
 }
 
 function hasWinnerOn(store: JsonStore, key: string): boolean {
   const day = store.data.days[key];
-  return Boolean(day && Object.values(day.entries).some((entry) => entry.solved));
+  return Boolean(
+    day &&
+      Object.values(day.entries).some(
+        (entry) => entry.solved && store.data.players[entry.userId]?.registered,
+      ),
+  );
 }
 
 function medal(index: number): string {
@@ -82,8 +91,16 @@ function leaderboardToday(store: JsonStore, now: Date): CommandReply {
     );
   }
 
-  const entries = Object.values(day.entries);
-  const score = scoreDay(entries);
+  const allEntries = Object.values(day.entries);
+  const score = scoreDay(allEntries);
+  const entries = allEntries.filter((entry) => store.data.players[entry.userId]?.registered);
+
+  if (entries.length === 0) {
+    return visible(
+      `**Wordle — ${formatDayLabel(key, tz)}**\nNo registered players have a result today yet.`,
+    );
+  }
+
   const sorted = [...entries].sort((a, b) => rankOf(a) - rankOf(b) || a.recordedAt.localeCompare(b.recordedAt));
 
   const lines = sorted.map((entry, index) => {
