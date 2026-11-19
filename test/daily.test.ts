@@ -168,7 +168,6 @@ describe("DailyService.resync", () => {
       const player = h?.store.player(userId, name);
       if (!player) return;
       player.total = total;
-      player.registered = true;
     };
     patch("user-1", "Ada", 12.5);
     patch("user-2", "Bob", 0);
@@ -193,7 +192,7 @@ describe("DailyService.resync", () => {
     expect(roleNamed(h, "-4 points")?.members.has("user-1")).toBe(true);
   });
 
-  it("keeps a 0-point role for a registered member", async () => {
+  it("keeps a 0-point role", async () => {
     h = await harness();
     const player = h.store.player("user-1", "ada");
     player.total = 0;
@@ -202,20 +201,5 @@ describe("DailyService.resync", () => {
 
     expect(report.updated).toEqual(["user-1"]);
     expect(roleNamed(h, "0 points")?.members.has("user-1")).toBe(true);
-  });
-
-  it("removes the role of an unregistered player", async () => {
-    h = await harness();
-    const player = h.store.player("user-1", "ada");
-    player.registered = false;
-    player.total = 12;
-    player.roleId = "role-stale";
-    h.members.roles.set("role-stale", { name: "ada · 12 pts", color: 0, members: new Set(["user-1"]) });
-
-    const report = await h.daily.resync();
-
-    expect(report.updated).toEqual([]);
-    expect(h.members.roles.size).toBe(0);
-    expect(player.roleId).toBeNull();
   });
 });

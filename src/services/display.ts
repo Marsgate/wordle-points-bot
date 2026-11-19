@@ -42,16 +42,4 @@ export class DisplayService {
       return { ok: false, reason };
     }
   }
-
-  /** Used when a member drops to zero, e.g. after a negative award. */
-  async removePoints(roleId: string): Promise<boolean> {
-    try {
-      const removed = await this.deps.port.deleteRole(roleId);
-      if (removed) this.deps.logger.info(`Deleted points role ${roleId}`);
-      return removed;
-    } catch (error) {
-      this.deps.logger.warn(`Could not delete points role ${roleId}`, error);
-      return false;
-    }
-  }
 }

@@ -1,14 +1,13 @@
 import { dayKey, formatDayLabel } from "../core/day.js";
 import { formatPoints } from "../core/points.js";
-import { roundToHalf, scoreDay, type ScoredEntry } from "../core/scoring.js";
+import { roundToHalf } from "../core/scoring.js";
 import { computeStreak, previousDayKey } from "../core/streak.js";
 import type { JsonStore } from "../store.js";
 import type { DailyService } from "../services/daily.js";
 import type { DisplayService } from "../services/display.js";
-import { registerMember } from "../services/registration.js";
+import { allTimeBoard, medal } from "../services/board.js";
 
 export interface CommandOptions {
-  getString(name: string): string | null;
   getNumber(name: string): number | null;
   getUser(name: string): { id: string; name: string } | null;
 }
@@ -51,13 +50,8 @@ function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
-function rankOf(entry: ScoredEntry): number {
-  return entry.solved ? entry.guesses : 7;
-}
-
 /** Days on which at least one player solved the puzzle, registered or not. */
-function wonDays(store: JsonStore): string[] {
-  return Object.values(store.data.days)
+function wonDays(store: JsonStore): string[] {  return Object.values(store.data.days)
     .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
     .map((day) => day.key);
 }
@@ -67,81 +61,14 @@ function hasWinnerOn(store: JsonStore, key: string): boolean {
   return Boolean(day && Object.values(day.entries).some((entry) => entry.solved));
 }
 
-function medal(index: number): string {
-  return ["🥇", "🥈", "🥉"][index] ?? `**${index + 1}.**`;
-}
-
-function leaderboardToday(store: JsonStore, now: Date): CommandReply {
-  const tz = store.config.timeZone;
-  const key = dayKey(now, tz);
-  const day = store.data.days[key];
-
-  if (!day || Object.keys(day.entries).length === 0) {
-    return visible(
-      `**Wordle — ${formatDayLabel(key, tz)}**\nNo results for today yet. They arrive with the next Activity summary.`,
-    );
-  }
-
-  const allEntries = Object.values(day.entries);
-  const score = scoreDay(allEntries);
-  const entries = allEntries.filter((entry) => store.data.players[entry.userId]?.registered);
-
-  if (entries.length === 0) {
-    return visible(
-      `**Wordle — ${formatDayLabel(key, tz)}**\nNo registered players have a result today yet.`,
-    );
-  }
-
-  const sorted = [...entries].sort((a, b) => rankOf(a) - rankOf(b) || a.recordedAt.localeCompare(b.recordedAt));
-
-  const lines = sorted.map((entry, index) => {
-    const points = day.finalized ? (day.points[entry.userId] ?? 0) : (score.points[entry.userId] ?? 0);
-    const result = entry.solved ? `${entry.guesses}/6` : "X/6";
-    const pointsLabel = points > 0 ? ` · **${formatPoints(points)} pts**` : "";
-    return `${medal(index)} ${mention(entry.userId)} — ${result}${pointsLabel}`;
-  });
-
-  const tieNote =
-    score.winners.length > 1
-      ? `\n_Tie at ${score.bestGuesses}/6: prize split ${score.winners.length} ways (${formatPoints(score.winners[0]?.points ?? 0)} each)._`
-      : "";
-  const status = day.finalized ? "Final" : "Provisional — points commit at midnight";
-
-  return visible(`**Wordle — ${formatDayLabel(key, tz)}** _(${status})_\n${lines.join("\n")}${tieNote}`);
-}
-
-function leaderboardAllTime(store: JsonStore): CommandReply {
-  const players = Object.values(store.data.players)
-    .filter((player) => player.registered)
-    .sort((a, b) => b.total - a.total || a.displayName.localeCompare(b.displayName))
-    .slice(0, 15);
-
-  if (players.length === 0) return visible("No one is registered yet. Run `/wordle-register` to join.");
-
-  const lines = players.map(
-    (player, index) => `${medal(index)} ${mention(player.userId)} — **${formatPoints(player.total)} pts**`,
-  );
-  return visible(`**Wordle all-time points**\n${lines.join("\n")}`);
-}
-
 /**
  * Single entry point for slash commands. Returns the reply rather than sending
  * it, which keeps every command testable without a Discord connection.
  */
 export async function runCommand(name: string, ctx: CommandContext, deps: CommandDeps): Promise<CommandReply> {
   switch (name) {
-    case "wordle-leaderboard": {
-      const scope = ctx.options.getString("scope") ?? "all";
-      return scope === "today" ? leaderboardToday(deps.store, ctx.now) : leaderboardAllTime(deps.store);
-    }
-
-    case "wordle-register": {
-      const reply = await registerMember(
-        { store: deps.store, display: deps.display },
-        { userId: ctx.userId, userName: ctx.userName, points: ctx.options.getNumber("points") },
-      );
-      return ephemeral(reply);
-    }
+    case "wordle-leaderboard":
+      return visible(allTimeBoard(deps.store));
 
     case "wordle-award": {
       if (!ctx.isAdmin) return ephemeral("You need **Manage Server** to adjust points.");
@@ -155,8 +82,6 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
 
       const delta = roundToHalf(rawPoints);
       const player = deps.store.player(target.id, target.name);
-      // An admin awarding points implicitly vouches for the member.
-      player.registered = true;
       // Totals may be zero or negative; the role always follows the total.
       player.total = roundToHalf(player.total + delta);
 
@@ -280,29 +205,6 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
           `Reverted awarded points for ${plural(report.reverted, "member")}.`,
           "Later results today count again. Close it again with `/wordle-close`.",
         ].join("\n"),
-      );
-    }
-
-    case "wordle-unregister": {
-      const target = ctx.options.getUser("user");
-      const userId = target?.id ?? ctx.userId;
-      if (userId !== ctx.userId && !ctx.isAdmin) {
-        return ephemeral("You need **Manage Server** to unregister someone else.");
-      }
-
-      const player = deps.store.data.players[userId];
-      if (!player?.registered) return ephemeral(`${mention(userId)} is not registered.`);
-
-      player.registered = false;
-      if (player.roleId) {
-        await deps.display.removePoints(player.roleId);
-        player.roleId = null;
-      }
-      await deps.store.save();
-
-      return ephemeral(
-        `Unregistered ${mention(userId)} and removed their points role. ` +
-          `Their total (${formatPoints(player.total)}) is kept in case they rejoin.`,
       );
     }
 

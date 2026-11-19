@@ -6,7 +6,8 @@ the Wordle Activity's daily summary, so nobody has to paste share text.
 
 ## The basics
 
-1. Register once with the total you are starting from: `/wordle-register points:0`
+1. Play Wordle through Discord's `/wordle` Activity. The first summary that names you
+   joins you at **0 points** and creates your role — there is nothing to sign up for.
 2. Play Wordle through Discord's `/wordle` Activity — that is the only source of results.
 3. Each morning the bot reads the Activity's **daily summary** for yesterday and awards
    **10 points** to first place. Ties split the prize, rounded to the nearest half point —
@@ -28,9 +29,7 @@ The bot never reads points from names and never edits nicknames.
 
 | Command | What it does |
 |---|---|
-| `/wordle-register points:` | Join the game and set your starting total |
-| `/wordle-unregister [user:]` | Leave and drop your role (admins can remove others) |
-| `/wordle-leaderboard [scope:]` | Overall point totals by default, or today's ranking |
+| `/wordle-leaderboard` | The all-time point totals |
 | `/wordle-streak [count:]` | The server's day streak; admins can set it (0 clears) |
 
 **For admins**
@@ -49,12 +48,12 @@ handy for testing, not needed in normal play.
 - Results come from the Activity's **daily summary**, one per group/channel; they are
   merged per day and ranked together, so a better score from another channel takes the
   prize. New Wordle channels are discovered by scanning all readable text channels.
-- Everyone who finishes takes part in the split, but **only registered members are paid**.
-  Tie with an unregistered player at 3/6 and the 10 points split 5/5: you get 5, they get
-  nothing.
-- Unregistered players who finish get one message naming them, with a **Register**
-  button that opens a short form for their current total. It goes to the Wordle channel
-  (see `DISCORD_WORDLE_CHANNEL_ID`), like the streak correction.
+- Everyone who finishes is a player: the first time a summary names someone, the bot
+  registers them at **0 points**, creates their role, and pays their share of the split.
+  Nobody has to sign up before their first game, and nobody is ever prompted to.
+- Every summary is followed by the **all-time board**, posted by the bot directly under
+  the Activity's score in the same channel — one board per day, however many channels
+  report that day.
 - The bot never pings anyone: mentions are rendered without a notification, so nobody is
   notified by the summary, the leaderboard or a command reply.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
@@ -65,8 +64,8 @@ handy for testing, not needed in normal play.
 
 ## Streak
 
-- A day counts if **at least one player solved** the puzzle — registered or not. An
-  unregistered solver still keeps the streak alive, even though they earn no points.
+- A day counts if **at least one player solved** the puzzle. A solver the bot has never
+  seen before counts too: the summary names them, so they join at 0 points on the spot.
 - The streak only breaks once a day is over: if nobody has solved yet today, yesterday's
   streak still stands.
 - The streak **starts at the highest group streak** reported when the bot first scans the
@@ -75,19 +74,18 @@ handy for testing, not needed in normal play.
 - A group's own summary can disagree with the server-wide streak (different channel,
   different group). When it does, the bot posts one short correction for the day, in the
   Wordle channel — a day summarised in several channels still gets a single correction:
-  *"Um, actually 🤓☝️ — the streak is N days."* The same goes for the registration
-  message: each is recorded in the store before it is posted, so restarting the bot
-  cannot repeat it.
+  *"Um, actually 🤓☝️ — the streak is N days."* It is recorded in the store before it is
+  posted, so restarting the bot cannot repeat it.
 
 ## Roles
 
-- One role per registered member, named `<total> points` (`13.5 points`, `0 points`,
+- One role per player, named `<total> points` (`13.5 points`, `0 points`,
   `-114 points`), created with no permissions. Colours band the totals: grey under 10,
   green 10–24.5, blue 25–49.5, gold 50+.
 - The role is renamed whenever the total changes; no nickname is used, so renaming yourself
   needs nothing extra.
 - The role shows as a member's badge only if it is their highest role.
-- `/wordle-unregister` is the only thing that removes a role — not a zero total.
+- The bot does not remove roles; a zero total keeps its `0 points` role.
 
 ---
 
@@ -128,8 +126,8 @@ DEBUG_TOOLS=false        # optional: enable /wordle-close and /wordle-reopen
 ```
 
 `DISCORD_WORDLE_CHANNEL_ID` is the channel the bot brings up server-wide news in (the
-streak correction and the "you are not registered" message). It is the channel Wordle is
-played in; leave it empty and those messages answer in the channel the summary came from.
+streak correction). It is the channel Wordle is played in; leave it empty and that message
+answers in the channel the summary came from. The board always follows the summary itself.
 
 Invite the bot with the `bot` and `applications.commands` scopes and permission integer
 `268504064` (View Channels, Send Messages, Read Message History, Manage Roles):
@@ -146,8 +144,8 @@ npm start
 ```
 
 On first start the bot records the guild and the day it joined, so there is no setup
-command to run. Members register themselves with `/wordle-register points:0` (or their
-existing total); nicknames are never edited.
+command to run. Players are added automatically the first time a summary mentions them,
+at 0 points.
 
 ### Running unattended (Windows)
 
@@ -169,7 +167,7 @@ Run only one copy at a time — two instances would fight over the store.
 ### Development
 
 ```powershell
-npm test          # 130 offline tests, no token or network needed
+npm test          # 137 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow
@@ -181,5 +179,5 @@ services through fake Discord ports.
 ### Data
 
 State lives in `./data/wordle.json` (override with `DATA_DIR`): configuration, daily
-entries, totals, registration flags and role ids. Writes are atomic and a corrupt file is
+entries, totals and role ids. Writes are atomic and a corrupt file is
 moved aside rather than deleted — back it up if you care about the leaderboard.

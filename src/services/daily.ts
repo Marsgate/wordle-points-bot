@@ -45,14 +45,10 @@ export class DailyService {
     this.finalizing.add(key);
     try {
       const score = scoreDay(Object.values(day.entries));
-      const isRegistered = (userId: string) =>
-        this.deps.store.data.players[userId]?.registered === true;
 
-      // Everyone takes part in the split, but only registered members are paid.
-      const winners = score.winners.filter((winner) => isRegistered(winner.userId));
-      day.points = Object.fromEntries(
-        Object.entries(score.points).filter(([userId]) => isRegistered(userId)),
-      );
+      // Everyone the summary named is a player, so everyone who solved shares.
+      const winners = score.winners;
+      day.points = score.points;
       day.finalized = true;
       day.finalizedAt = this.deps.now().toISOString();
 
@@ -118,17 +114,12 @@ export class DailyService {
 
       player.total = roundToHalf(player.total - points);
 
-      if (player.registered) {
-        const applied = await this.deps.display.applyPoints(
-          userId,
-          player.total,
-          player.roleId ?? null,
-        );
-        if (applied.ok) player.roleId = applied.roleId;
-      } else if (player.roleId) {
-        await this.deps.display.removePoints(player.roleId);
-        player.roleId = null;
-      }
+      const applied = await this.deps.display.applyPoints(
+        userId,
+        player.total,
+        player.roleId ?? null,
+      );
+      if (applied.ok) player.roleId = applied.roleId;
 
       reverted += 1;
     }
@@ -151,14 +142,6 @@ export class DailyService {
     const failures: Array<{ userId: string; reason: string }> = [];
 
     for (const player of Object.values(this.deps.store.data.players)) {
-      if (!player.registered) {
-        if (player.roleId) {
-          await this.deps.display.removePoints(player.roleId);
-          player.roleId = null;
-        }
-        continue;
-      }
-
       const applied = await this.deps.display.applyPoints(
         player.userId,
         player.total,

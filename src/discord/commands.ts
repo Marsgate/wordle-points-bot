@@ -14,19 +14,7 @@ const builder = (name: string, description: string): SlashCommandBuilder =>
 
 export function commandDefinitions(includeDebug = false) {
   const base = [
-    builder("wordle-register", "Join the points game and enter your current total").addNumberOption((option) =>
-      option
-        .setName("points")
-        .setDescription("Your current Wordle points — use 0 if you are starting fresh")
-        .setRequired(true),
-    ),
-
-    builder("wordle-leaderboard", "Show overall point totals (or today's ranking)").addStringOption((option) =>
-      option
-        .setName("scope")
-        .setDescription("Overall totals by default")
-        .addChoices({ name: "All-time", value: "all" }, { name: "Today", value: "today" }),
-    ),
+    builder("wordle-leaderboard", "Show the overall point totals"),
 
     builder("wordle-award", "Manually add or remove Wordle points")
       .addUserOption((option) => option.setName("user").setDescription("Member to adjust").setRequired(true))
@@ -39,10 +27,6 @@ export function commandDefinitions(includeDebug = false) {
       option
         .setName("count")
         .setDescription("Admin: set the current streak in days (0 clears it)"),
-    ),
-
-    builder("wordle-unregister", "Leave the game and drop your points role").addUserOption((option) =>
-      option.setName("user").setDescription("Member to unregister (admins only; defaults to you)"),
     ),
   ];
 
@@ -93,7 +77,6 @@ export async function registerCommands(
 
 function readOptions(interaction: ChatInputCommandInteraction): CommandOptions {
   return {
-    getString: (name) => interaction.options.getString(name),
     getNumber: (name) => interaction.options.getNumber(name),
     getUser: (name) => {
       const user = interaction.options.getUser(name);

@@ -99,14 +99,6 @@ export class DiscordMemberPort implements MemberPort {
 
     return { roleId: role.id, changed };
   }
-
-  async deleteRole(roleId: string): Promise<boolean> {
-    const guild = await this.requireGuild();
-    const role = guild.roles.cache.get(roleId) ?? (await guild.roles.fetch(roleId).catch(() => null));
-    if (!role) return false;
-    await role.delete("Wordle points removed");
-    return true;
-  }
 }
 
 export class DiscordNotifierPort implements NotifierPort {

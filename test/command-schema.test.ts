@@ -23,7 +23,7 @@ describe("slash command definitions", () => {
   it("are unique, valid chat-input commands", () => {
     const names = definitions.map((command) => command.name);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toHaveLength(5);
+    expect(names).toHaveLength(3);
 
     for (const command of definitions) {
       expect(command.name).toMatch(/^[a-z0-9-]{1,32}$/u);
@@ -56,9 +56,8 @@ describe("slash command definitions", () => {
     expect(debug).toHaveLength(base.length + 2);
   });
 
-  it("offers all-time first on the leaderboard", () => {
+  it("gives the leaderboard no options: it always shows all-time totals", () => {
     const leaderboard = definitions.find((command) => command.name === "wordle-leaderboard");
-    const scope = leaderboard?.options?.find((option) => option.name === "scope");
-    expect(scope?.choices?.map((choice) => choice.value)).toEqual(["all", "today"]);
+    expect(leaderboard?.options ?? []).toHaveLength(0);
   });
 });

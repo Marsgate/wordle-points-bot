@@ -27,7 +27,7 @@ const SUMMARY_MESSAGE = {
 };
 
 function register(test: Harness, userId: string, nickname?: string): void {
-  test.store.player(userId, userId).registered = true;
+  test.store.player(userId, userId);
   if (nickname) test.members.nicknames.set(userId, nickname);
 }
 
@@ -48,10 +48,10 @@ describe("SummaryService", () => {
     expect(day?.points).toEqual({ "111": 10 });
     expect(h.store.data.players["111"]?.total).toBe(10);
     expect(h.store.data.players["222"]?.total).toBe(0);
-    expect([...h.members.roles.values()][0]?.name).toBe("10 points");
+    expect([...h.members.roles.values()].map((role) => role.name)).toContain("10 points");
   });
 
-  it("splits a tie with an unregistered player but only pays the registered one", async () => {
+  it("auto-registers a new player at 0 when they tie for first", async () => {
     h = await harness();
     register(h, "111", "Ada");
 
@@ -64,23 +64,35 @@ describe("SummaryService", () => {
 
     const day = h.store.data.days["2026-11-15"];
     expect(day?.entries["333"]).toMatchObject({ guesses: 3, solved: true });
-    expect(day?.points).toEqual({ "111": 5 });
+    expect(day?.points).toEqual({ "111": 5, "333": 5 });
     expect(h.store.data.players["111"]?.total).toBe(5);
-    expect(h.store.data.players["333"]).toBeUndefined();
+    expect(h.store.data.players["333"]).toMatchObject({ total: 5 });
   });
 
-  it("awards nothing when only unregistered players solved", async () => {
+  it("auto-registers a solo solver who had never played before", async () => {
     h = await harness();
     register(h, "111", "Ada");
 
-    const ghostsOnly = {
+    const newcomerOnly = {
       ...SUMMARY_MESSAGE,
       content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n2/6: <@333>",
     };
-    await h.summary.handleMessage(ghostsOnly);
+    await h.summary.handleMessage(newcomerOnly);
 
-    expect(h.store.data.days["2026-11-15"]?.points).toEqual({});
+    expect(h.store.data.days["2026-11-15"]?.points).toEqual({ "333": 10 });
+    expect(h.store.data.players["333"]).toMatchObject({ total: 10 });
     expect(h.store.data.players["111"]?.total).toBe(0);
+  });
+
+  it("does not reset the total of a player who plays again", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.player("333", "newcomer").total = 12;
+    h.store.player("333", "newcomer");
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(h.store.data.players["333"]?.total).toBe(12);
   });
 
   it("syncs the reported group streak", async () => {
@@ -219,8 +231,9 @@ describe("SummaryService", () => {
     const correction = h.notifier.messages.find((message) => message.content.includes("Um, actually"));
     expect(correction?.channelId).toBe("chan-home");
 
-    const ping = h.notifier.messages.find((message) => message.button?.customId === "wordle-register");
-    expect(ping?.channelId).toBe("chan-home");
+    // The board belongs under the summary, not in the notice channel.
+    const board = h.notifier.messages.find((message) => message.content.includes("Wordle all-time points"));
+    expect(board?.channelId).toBe("chan-elsewhere");
   });
 
   it("does not repeat notices after a restart", async () => {
@@ -289,47 +302,54 @@ describe("SummaryService", () => {
     expect(corrections).toHaveLength(1);
   });
 
-  it("pings unregistered players who finished", async () => {
+  it("registers everyone who finished and never prompts", async () => {
     h = await harness({ nicknames: { "222": "Bob" } });
     register(h, "111", "Ada");
 
     await h.summary.handleMessage(SUMMARY_MESSAGE);
 
-    const ping = h.notifier.messages.find((message) => message.button?.customId === "wordle-register");
-    expect(ping?.content).toContain("<@222>");
-    expect(ping?.content).toContain("<@333>");
-    expect(ping?.content).toContain("/wordle-register");
-    expect(ping?.button).toEqual({ label: "Register", customId: "wordle-register" });
+    expect(h.notifier.messages.some((message) => message.button)).toBe(false);
+    expect(h.store.data.players["222"]).toMatchObject({ total: 0 });
+    expect(h.store.data.players["333"]).toMatchObject({ total: 0 });
   });
 
-  it("prompts each unregistered player once per day", async () => {
+  it("posts the all-time board under the summary", async () => {
     h = await harness();
     register(h, "111", "Ada");
 
-    const fromA = {
-      ...SUMMARY_MESSAGE,
-      id: "sum-a",
-      channelId: "chan-a",
-      content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n3/6: <@111> <@333>",
-    };
-    const fromB = {
-      ...SUMMARY_MESSAGE,
-      id: "sum-b",
-      channelId: "chan-b",
-      content: "**Your group is on a 12 day streak!** Here are yesterday's results:\n4/6: <@444>",
-    };
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const board = h.notifier.messages.find((message) => message.content.includes("Wordle all-time points"));
+    expect(board?.channelId).toBe("chan-wordle");
+    expect(board?.content).toContain("<@111>");
+    expect(board?.content).toContain("**10 pts**");
+    expect(board?.button).toBeUndefined();
+  });
+
+  it("posts the board once per day, not once per channel", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+
+    const fromA = { ...SUMMARY_MESSAGE, id: "sum-a", channelId: "chan-a" };
+    const fromB = { ...SUMMARY_MESSAGE, id: "sum-b", channelId: "chan-b" };
 
     await h.summary.handleMessage(fromA);
     await h.summary.handleMessage(fromB);
 
-    const pings = h.notifier.messages.filter((message) => message.button?.customId === "wordle-register");
-    expect(pings).toHaveLength(2);
-    expect(pings[0]?.content).toContain("<@333>");
-    expect(pings[1]?.content).toContain("<@444>");
-    expect(pings[1]?.content).not.toContain("<@333>");
-    expect(h.store.data.days["2026-11-15"]?.registrationPrompted).toEqual(
-      expect.arrayContaining(["333", "444"]),
-    );
+    const boards = h.notifier.messages.filter((message) => message.content.includes("Wordle all-time points"));
+    expect(boards).toHaveLength(1);
+    expect(h.store.data.days["2026-11-15"]?.leaderboardPosted).toBe(true);
+  });
+
+  it("does not post the board twice after a restart", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const restarted = await harness({ dir: h.dir });
+    await restarted.summary.handleMessage(SUMMARY_MESSAGE);
+
+    expect(restarted.notifier.messages).toHaveLength(0);
   });
 
   it("compares results across channels on the same day", async () => {
@@ -378,14 +398,20 @@ describe("SummaryService", () => {
     expect(await h.summary.handleMessage(SUMMARY_MESSAGE)).toBe(false);
   });
 
-  it("keeps unregistered players out of the points", async () => {
+  it("scores an existing player who only shows up in a later summary", async () => {
     h = await harness();
     register(h, "111", "Ada");
+    h.store.player("333", "Gone").total = 4;
 
-    await h.summary.handleMessage(SUMMARY_MESSAGE);
+    const later = {
+      ...SUMMARY_MESSAGE,
+      content:
+        "**Your group is on a 12 day streak!** Here are yesterday's results:\n3/6: <@111>\n5/6: <@333>",
+    };
+    await h.summary.handleMessage(later);
 
-    expect(h.store.data.days["2026-11-15"]?.entries["333"]).toMatchObject({ solved: false });
-    expect(h.store.data.players["333"]).toBeUndefined();
+    expect(h.store.data.days["2026-11-15"]?.entries["333"]).toMatchObject({ guesses: 5, solved: true });
+    expect(h.store.data.players["333"]?.total).toBe(4);
     expect(h.store.data.days["2026-11-15"]?.points).toEqual({ "111": 10 });
   });
 

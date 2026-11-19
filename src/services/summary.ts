@@ -2,7 +2,10 @@ import { dayKey } from "../core/day.js";
 import { looksLikeWordleSummary, parseWordleSummary, type SummaryEntry } from "../core/summary.js";
 import { computeStreak, previousDayKey } from "../core/streak.js";
 import type { JsonStore } from "../store.js";
+import { allTimeBoard } from "./board.js";
 import type { DailyService } from "./daily.js";
+import type { DisplayService } from "./display.js";
+import { registerOnPlay } from "./registration.js";
 import type {
   Logger,
   MemberPort,
@@ -21,7 +24,8 @@ function rank(entry: { guesses: number; solved: boolean }): number {
  *
  * The summary is yesterday's results, posted the next morning, so this runs
  * after that day was closed: it reopens the day, merges the scores, and
- * closes it again. Only registered members are scored.
+ * closes it again. The all-time board follows in the same channel, right under
+ * the Activity's score.
  *
  * The streak is the server's own count. The highest group streak reported
  * around startup becomes the starting line; once locked, later Activity numbers
@@ -34,6 +38,7 @@ export class SummaryService {
     private readonly deps: {
       store: JsonStore;
       daily: DailyService;
+      display: DisplayService;
       members: MemberPort;
       source: SummarySourcePort;
       notifier: NotifierPort;
@@ -121,16 +126,14 @@ export class SummaryService {
 
     const members = await this.membersForResolution();
     const resolved = this.resolveEntries(summary.entries, members);
+    await this.registerPlayers(resolved, members);
 
     let applied = 0;
-    const unregistered = new Set<string>();
 
     for (const entry of resolved) {
       const existing = day.entries[entry.userId];
       if (existing && rank(existing) <= rank(entry)) continue;
 
-      // Unregistered players are kept in the day so they still take a share of
-      // the prize; the share itself is simply never awarded to them.
       day.entries[entry.userId] = {
         userId: entry.userId,
         guesses: entry.guesses,
@@ -139,10 +142,6 @@ export class SummaryService {
         recordedAt: message.createdAt.toISOString(),
       };
       applied += 1;
-
-      if (!this.deps.store.data.players[entry.userId]?.registered) {
-        unregistered.add(entry.userId);
-      }
     }
 
     day.summaryMessageId = message.id;
@@ -161,14 +160,10 @@ export class SummaryService {
       summary.streak !== null && !day.streakCorrectionSent
         ? this.streakCorrection(summary.streak, summaryDay)
         : null;
-    const unprompted = [...unregistered].filter(
-      (userId) => !day.registrationPrompted?.includes(userId),
-    );
+    const postBoard = !day.leaderboardPosted;
 
     if (correction) day.streakCorrectionSent = true;
-    if (unprompted.length > 0) {
-      day.registrationPrompted = [...(day.registrationPrompted ?? []), ...unprompted];
-    }
+    if (postBoard) day.leaderboardPosted = true;
 
     await this.deps.store.save();
 
@@ -177,6 +172,17 @@ export class SummaryService {
         `streak ${summary.streak ?? "unknown"}.`,
     );
 
+    // The board goes straight under the Activity's score, in its channel.
+    if (postBoard) {
+      try {
+        await this.deps.notifier.send(message.channelId, allTimeBoard(this.deps.store));
+      } catch (error) {
+        day.leaderboardPosted = false;
+        await this.deps.store.save().catch(() => {});
+        this.deps.logger.warn("Could not post the leaderboard", error);
+      }
+    }
+
     if (correction) {
       try {
         await this.deps.notifier.send(noticeChannel, correction);
@@ -184,27 +190,6 @@ export class SummaryService {
         day.streakCorrectionSent = false;
         await this.deps.store.save().catch(() => {});
         this.deps.logger.warn("Could not post the streak correction", error);
-      }
-    }
-
-    // Prompt anyone who finished but is not registered: their result was
-    // ignored. Each player is asked once per day, however many channel
-    // summaries mention them.
-    if (unprompted.length > 0) {
-      const mentions = unprompted.map((id) => `<@${id}>`).join(", ");
-      try {
-        await this.deps.notifier.send(
-          noticeChannel,
-          `${mentions} — you finished today's Wordle but are not registered, so it did not count.\n` +
-            "Tap **Register** or run `/wordle-register points:<your total>` (use `0` if you are new).",
-          { label: "Register", customId: "wordle-register" },
-        );
-      } catch (error) {
-        day.registrationPrompted = (day.registrationPrompted ?? []).filter(
-          (id) => !unprompted.includes(id),
-        );
-        await this.deps.store.save().catch(() => {});
-        this.deps.logger.warn("Could not post the registration ping", error);
       }
     }
 
@@ -245,6 +230,32 @@ export class SummaryService {
     return Object.values(this.deps.store.data.days)
       .filter((day) => Object.values(day.entries).some((entry) => entry.solved))
       .map((day) => day.key);
+  }
+
+  /**
+   * Anyone the Activity reports joins at 0 points the first time they appear,
+   * so their share of the split is paid rather than dropped. Players who left
+   * with `/wordle-unregister` keep their record and stay out; they are prompted
+   * instead (see the "not registered" notice below).
+   */
+  private async registerPlayers(
+    entries: Array<{ userId: string }>,
+    members: MemberSummary[],
+  ): Promise<void> {
+    const names = new Map<string, string>();
+    for (const member of members) {
+      names.set(member.userId, member.nickname ?? member.globalName ?? member.username);
+    }
+
+    const seen = new Set<string>();
+    for (const entry of entries) {
+      if (seen.has(entry.userId)) continue;
+      seen.add(entry.userId);
+      await registerOnPlay(
+        { store: this.deps.store, display: this.deps.display, logger: this.deps.logger },
+        { userId: entry.userId, displayName: names.get(entry.userId) ?? "" },
+      );
+    }
   }
 
   /** Member lists are expensive; one fetch serves every summary in a scan. */

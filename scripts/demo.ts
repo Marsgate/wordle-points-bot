@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DailyService } from "../src/services/daily.js";
 import { DisplayService } from "../src/services/display.js";
-import { registerMember } from "../src/services/registration.js";
 import { SummaryService } from "../src/services/summary.js";
 import type { Logger, MemberPort, NotifierPort } from "../src/services/ports.js";
 import { JsonStore } from "../src/store.js";
@@ -28,6 +27,7 @@ const nicknames = new Map<string, string>([
   ["222", "Grace"],
   ["333", "Linus 🐧"],
   ["444", "Margaret"],
+  ["555", "Sam"],
 ]);
 const roles = new Map<string, { name: string; color: number; members: Set<string> }>();
 let roleSequence = 0;
@@ -68,12 +68,14 @@ const memberPort: MemberPort = {
     }
     return { roleId: roleId as string, changed };
   },
-  deleteRole: async (roleId) => roles.delete(roleId),
 };
 
 
 const notifier: NotifierPort = {
-  send: async () => {},
+  send: async (channelId, content) => {
+    console.log(`   ↳ #${channelId}`);
+    console.log(content.replace(/^/gm, "     "));
+  },
 };
 
 const summarySource = {
@@ -95,21 +97,6 @@ async function main(): Promise<void> {
 
     const display = new DisplayService({ port: memberPort, logger });
 
-    banner("Members register with the totals they are bringing in");
-    const starters: Array<[string, string, number]> = [
-      ["111", "ada", 0],
-      ["222", "grace", 0],
-      ["333", "linus", 3.5],
-      ["444", "margaret", -4],
-    ];
-    for (const [userId, name, points] of starters) {
-      const reply = await registerMember(
-        { store, display },
-        { userId, userName: name, points },
-      );
-      console.log(`   ${nicknames.get(userId)?.padEnd(12)} ${reply.split("\n")[0]?.replace(/\*\*/g, "")}`);
-    }
-
     const daily = new DailyService({
       store,
       display,
@@ -120,6 +107,7 @@ async function main(): Promise<void> {
     const summary = new SummaryService({
       store,
       daily,
+      display,
       members: memberPort,
       source: summarySource,
       notifier,
@@ -133,9 +121,11 @@ async function main(): Promise<void> {
       "**Your group is on a 103 day streak!** 🔥🔥🔥 Here are yesterday's results:",
       "👑 4/6: <@111> <@222>",
       "5/6: <@333>",
+      "6/6: <@555>",
       "X/6: <@444>",
     ].join("\n");
     console.log(content.replace(/^/gm, "   "));
+    console.log("   (Nobody signs up: naming a player joins them at 0 points.)");
 
     await summary.handleMessage({
       id: "summary-1",

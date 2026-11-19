@@ -57,6 +57,7 @@ async function main(): Promise<void> {
   const summary = new SummaryService({
     store,
     daily,
+    display,
     members: memberPort,
     source: new DiscordSummarySource(client, () => store.config.guildId),
     notifier,

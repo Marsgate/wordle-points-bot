@@ -66,11 +66,6 @@ export function fakeMemberPort(initialNicknames: Record<string, string> = {}) {
 
       return { roleId: roleId as string, changed };
     },
-    deleteRole: async (roleId) => {
-      const existed = roles.delete(roleId);
-      if (existed) calls.deleted += 1;
-      return existed;
-    },
   };
 
   return { port, nicknames, roles, calls };
@@ -107,9 +102,7 @@ export function recordResult(
   solved = true,
   at = "2026-11-16T14:00:00Z",
 ): void {
-  if (!test.store.data.players[userId]?.registered) {
-    test.store.player(userId, userId).registered = true;
-  }
+  test.store.player(userId, userId);
   const day = dayKey(new Date(at), test.store.config.timeZone);
   test.store.day(day).entries[userId] = {
     userId,
@@ -142,8 +135,8 @@ export async function harness(
     timeZone?: string;
     now?: () => Date;
     configure?: boolean;
-    /** Members pre-registered at 0 points. Defaults to the usual author. */
-    registered?: string[];
+    /** Players pre-created at 0 points. Defaults to the usual author. */
+    players?: string[];
     /** Channel server-wide notices go to; null uses the summary's channel. */
     noticeChannelId?: string | null;
     /** Existing store directory to reopen, to stand in for a restart. */
@@ -158,8 +151,8 @@ export async function harness(
     store.config.guildId = GUILD;
   }
 
-  for (const userId of options.registered ?? ["user-1"]) {
-    store.player(userId, userId).registered = true;
+  for (const userId of options.players ?? ["user-1"]) {
+    store.player(userId, userId);
   }
   await store.save();
 
@@ -179,6 +172,7 @@ export async function harness(
   const summary = new SummaryService({
     store,
     daily,
+    display,
     members: members.port,
     source: summarySource.port,
     notifier: notifier.port,
@@ -203,13 +197,11 @@ export async function harness(
 }
 
 export function options(values: {
-  scope?: string | null;
   user?: { id: string; name: string } | null;
   points?: number | null;
   count?: number | null;
 }): CommandOptions {
   return {
-    getString: (name) => (name === "scope" ? (values.scope ?? null) : null),
     getNumber: (name) => {
       if (name === "points") return values.points ?? null;
       if (name === "count") return values.count ?? null;

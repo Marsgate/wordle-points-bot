@@ -139,14 +139,4 @@ describe("DiscordMemberPort", () => {
     expect(again.changed).toBe(true);
     expect(addedRoles).toEqual(["3.5 points"]);
   });
-
-  it("deletes a role and tolerates one that is already gone", async () => {
-    const { client, roles } = fakeGuild();
-    const port = new DiscordMemberPort(client, () => "guild-1", silentLogger);
-
-    const { roleId } = await port.syncRole("user-1", "3.5 points", 0x99aab5, null);
-    expect(await port.deleteRole(roleId)).toBe(true);
-    expect(roles.size).toBe(0);
-    expect(await port.deleteRole(roleId)).toBe(false);
-  });
 });

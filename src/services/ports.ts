@@ -21,8 +21,6 @@ export interface MemberPort {
     color: number,
     existingRoleId: string | null,
   ): Promise<{ roleId: string; changed: boolean }>;
-  /** Delete a points role. Returns false when it was already gone. */
-  deleteRole(roleId: string): Promise<boolean>;
 }
 
 /** A single button attached to a bot message. */

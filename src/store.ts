@@ -23,8 +23,8 @@ export interface DayRecord {
   summaryMessageId?: string;
   /** True once the day's streak correction has been posted, so it is sent once. */
   streakCorrectionSent?: boolean;
-  /** Unregistered finishers already prompted for this day, so nobody is asked twice. */
-  registrationPrompted?: string[];
+  /** True once the leaderboard for this day has been posted under the summary. */
+  leaderboardPosted?: boolean;
 }
 
 export interface PlayerRecord {
@@ -35,8 +35,6 @@ export interface PlayerRecord {
   displayName: string;
   /** The bot-managed personal points role, when one exists. */
   roleId: string | null;
-  /** Only registered members are scored; registration sets the starting total. */
-  registered: boolean;
 }
 
 export interface GuildConfig {
@@ -153,10 +151,9 @@ export class JsonStore {
     if (existing) {
       if (displayName) existing.displayName = displayName;
       if (existing.roleId === undefined) existing.roleId = null;
-      if (existing.registered !== true) existing.registered = false;
       return existing;
     }
-    const created: PlayerRecord = { userId, total: 0, displayName, roleId: null, registered: false };
+    const created: PlayerRecord = { userId, total: 0, displayName, roleId: null };
     this.state.players[userId] = created;
     return created;
   }
