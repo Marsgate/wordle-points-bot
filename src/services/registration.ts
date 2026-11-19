@@ -5,6 +5,7 @@ import type { Logger } from "./ports.js";
 export interface RegistrationDeps {
   store: JsonStore;
   display: DisplayService;
+  logger: Logger;
 }
 
 /**
@@ -13,7 +14,7 @@ export interface RegistrationDeps {
  * take, so a result is never dropped for want of a sign-up.
  */
 export async function registerOnPlay(
-  deps: RegistrationDeps & { logger: Logger },
+  deps: RegistrationDeps,
   input: { userId: string; displayName?: string },
 ): Promise<void> {
   if (deps.store.data.players[input.userId]) return;
@@ -30,4 +31,9 @@ export async function registerOnPlay(
       `Auto-registered <@${input.userId}> at 0 points, but no role: ${applied.reason}`,
     );
   }
+
+  // The role already exists in Discord, so the record has to be on disk before
+  // this returns: a crash beforehand would leave the member with a role the
+  // store does not know about, and the replay would create a second one.
+  await deps.store.save();
 }
