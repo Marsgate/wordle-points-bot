@@ -24,7 +24,13 @@ export interface RolloverReport {
  * ranking is stable and roles are not rewritten each time someone else plays.
  */
 export class DailyService {
-  private readonly finalizing = new Set<string>();
+  /**
+   * One close or reopen per day at a time. Two summaries for the same day can
+   * arrive together (two channels, or a gateway message during the startup
+   * scan), and a reopen that interleaves with another reopen takes the day's
+   * points off every winner twice while only one close puts them back.
+   */
+  private readonly dayLocks = new Map<string, Promise<void>>();
 
   constructor(
     private readonly deps: {
@@ -37,53 +43,66 @@ export class DailyService {
   ) {}
 
   async finalizeDay(key: string): Promise<FinalizeReport> {
+    return this.serialiseDay(key, () => this.closeDay(key));
+  }
+
+  /** Runs one day's close or reopen at a time; see `dayLocks`. */
+  private serialiseDay<T>(key: string, work: () => Promise<T>): Promise<T> {
+    const previous = this.dayLocks.get(key) ?? Promise.resolve();
+    const run = previous.then(work, work);
+    this.dayLocks.set(
+      key,
+      run.then(
+        () => undefined,
+        () => undefined,
+      ),
+    );
+    return run;
+  }
+
+  private async closeDay(key: string): Promise<FinalizeReport> {
     const empty: FinalizeReport = { skipped: true, winners: [], updated: [], failures: [] };
 
     const day = this.deps.store.data.days[key];
-    if (!day || day.finalized || this.finalizing.has(key)) return empty;
+    if (!day || day.finalized) return empty;
 
-    this.finalizing.add(key);
-    try {
-      const score = scoreDay(Object.values(day.entries));
+    const score = scoreDay(Object.values(day.entries));
 
-      // Everyone the summary named is a player, so everyone who solved shares.
-      const winners = score.winners;
-      day.points = score.points;
-      day.finalized = true;
-      day.finalizedAt = this.deps.now().toISOString();
+    // Everyone the summary named is a player, so everyone who solved shares.
+    const winners = score.winners;
+    day.points = score.points;
+    day.finalized = true;
+    day.finalizedAt = this.deps.now().toISOString();
 
-      const updated: string[] = [];
-      const failures: Array<{ userId: string; reason: string }> = [];
+    const updated: string[] = [];
+    const failures: Array<{ userId: string; reason: string }> = [];
 
-      for (const winner of winners) {
-        const player = this.deps.store.player(winner.userId);
+    for (const winner of winners) {
+      const player = this.deps.store.player(winner.userId);
 
-        player.total = roundToHalf(player.total + winner.points);
+      player.total = roundToHalf(player.total + winner.points);
 
-        const applied = await this.deps.display.applyPoints(
-          winner.userId,
-          player.total,
-          player.roleId ?? null,
-        );
-
-        if (applied.ok) {
-          player.roleId = applied.roleId;
-          updated.push(winner.userId);
-        } else {
-          failures.push({ userId: winner.userId, reason: applied.reason });
-        }
-      }
-
-      await this.deps.store.save();
-      this.deps.logger.info(
-        `Closed ${key}: ${winners.length} winner(s), ${score.players} entrant(s), ` +
-          `${updated.length} points role(s) synced.`,
+      const applied = await this.deps.display.applyPoints(
+        winner.userId,
+        player.total,
+        player.roleId ?? null,
       );
 
-      return { skipped: false, winners, updated, failures };
-    } finally {
-      this.finalizing.delete(key);
+      if (applied.ok) {
+        player.roleId = applied.roleId;
+        updated.push(winner.userId);
+      } else {
+        failures.push({ userId: winner.userId, reason: applied.reason });
+      }
     }
+
+    await this.deps.store.save();
+    this.deps.logger.info(
+      `Closed ${key}: ${winners.length} winner(s), ${score.players} entrant(s), ` +
+        `${updated.length} points role(s) synced.`,
+    );
+
+    return { skipped: false, winners, updated, failures };
   }
 
   /** Finalize anything that ended while the bot was offline. */
@@ -104,6 +123,10 @@ export class DailyService {
    * the roles, and leave the day open so later results count again.
    */
   async reopenDay(key: string): Promise<{ reopened: boolean; reverted: number }> {
+    return this.serialiseDay(key, () => this.openDay(key));
+  }
+
+  private async openDay(key: string): Promise<{ reopened: boolean; reverted: number }> {
     const day = this.deps.store.data.days[key];
     if (!day?.finalized) return { reopened: false, reverted: 0 };
 

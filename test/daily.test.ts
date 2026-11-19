@@ -125,6 +125,37 @@ describe("DailyService.finalizeDay", () => {
   });
 });
 
+describe("DailyService.reopenDay", () => {
+  it("does not take the day's points off twice when two reopens overlap", async () => {
+    h = await harness({ nicknames: { "user-1": "Ada" } });
+    await post(h, "user-1", 2);
+    await h.daily.finalizeDay("2026-11-16");
+    expect(h.store.data.players["user-1"]?.total).toBe(10);
+
+    // Park the first role update so the second reopen arrives while the first
+    // is still between its "is it closed?" check and its reset.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const syncRole = h.members.port.syncRole;
+    let calls = 0;
+    h.members.port.syncRole = async (userId, roleName, color, existingRoleId) => {
+      calls += 1;
+      if (calls === 1) await gate;
+      return syncRole(userId, roleName, color, existingRoleId);
+    };
+
+    const first = h.daily.reopenDay("2026-11-16");
+    const second = h.daily.reopenDay("2026-11-16");
+    release();
+    const [a, b] = await Promise.all([first, second]);
+
+    expect(h.store.data.players["user-1"]?.total).toBe(0);
+    expect([a.reopened, b.reopened].filter(Boolean)).toHaveLength(1);
+  });
+});
+
 describe("DailyService.rollover", () => {
   it("closes every day missed while the bot was offline", async () => {
     h = await harness();
