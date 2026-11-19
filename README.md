@@ -167,7 +167,7 @@ Run only one copy at a time — two instances would fight over the store.
 ### Development
 
 ```powershell
-npm test          # 137 offline tests, no token or network needed
+npm test          # 131 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow

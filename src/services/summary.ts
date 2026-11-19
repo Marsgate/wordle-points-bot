@@ -234,9 +234,8 @@ export class SummaryService {
 
   /**
    * Anyone the Activity reports joins at 0 points the first time they appear,
-   * so their share of the split is paid rather than dropped. Players who left
-   * with `/wordle-unregister` keep their record and stay out; they are prompted
-   * instead (see the "not registered" notice below).
+   * so their share of the split is paid rather than dropped. There is no way to
+   * opt out: every player the summary names is registered and paid.
    */
   private async registerPlayers(
     entries: Array<{ userId: string }>,
