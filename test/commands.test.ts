@@ -59,7 +59,7 @@ describe("/wordle-leaderboard", () => {
 
 describe("/wordle-award", () => {
   it("adds points and creates the personal role", async () => {
-    h = await harness({ nicknames: { "user-9": "Nine âœ¦" } });
+    h = await harness({ nicknames: { "user-9": "Nine ✦" } });
     const reply = await runCommand(
       "wordle-award",
       context({ options: options({ user: { id: "user-9", name: "nine" }, points: 2.5 }) }),
@@ -76,11 +76,11 @@ describe("/wordle-award", () => {
   });
 
   it("subtracts into negative totals and shows them in the role", async () => {
-    h = await harness({ nicknames: { "user-9": "Nine âœ¦" } });
+    h = await harness({ nicknames: { "user-9": "Nine ✦" } });
     const player = h.store.player("user-9", "nine");
     player.total = 3;
     player.roleId = "role-1";
-    h.members.roles.set("role-1", { name: "Nine âœ¦ Â· 3 pts", color: 0, members: new Set(["user-9"]) });
+    h.members.roles.set("role-1", { name: "Nine ✦ · 3 pts", color: 0, members: new Set(["user-9"]) });
 
     const reply = await runCommand(
       "wordle-award",
@@ -95,11 +95,11 @@ describe("/wordle-award", () => {
   });
 
   it("keeps a 0-point role at exactly zero", async () => {
-    h = await harness({ nicknames: { "user-9": "Nine âœ¦" } });
+    h = await harness({ nicknames: { "user-9": "Nine ✦" } });
     const player = h.store.player("user-9", "nine");
     player.total = 3;
     player.roleId = "role-1";
-    h.members.roles.set("role-1", { name: "Nine âœ¦ Â· 3 pts", color: 0, members: new Set(["user-9"]) });
+    h.members.roles.set("role-1", { name: "Nine ✦ · 3 pts", color: 0, members: new Set(["user-9"]) });
 
     const reply = await runCommand(
       "wordle-award",
