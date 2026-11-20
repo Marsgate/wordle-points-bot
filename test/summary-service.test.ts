@@ -192,6 +192,23 @@ describe("SummaryService", () => {
     expect(correction?.content).not.toContain("summary says");
   });
 
+  it("posts the streak correction above the board", async () => {
+    h = await harness();
+    register(h, "111", "Ada");
+    h.store.config.streakFrozen = true;
+    h.store.config.streakSeed = { day: "2026-11-14", count: 12 };
+
+    await h.summary.handleMessage(SUMMARY_MESSAGE);
+
+    const contents = h.notifier.messages.map((message) => message.content);
+    const correctionAt = contents.findIndex((content) => content.includes("Um, actually"));
+    const boardAt = contents.findIndex((content) => content.includes("Wordle all-time points"));
+
+    expect(correctionAt).toBeGreaterThanOrEqual(0);
+    expect(boardAt).toBeGreaterThanOrEqual(0);
+    expect(correctionAt).toBeLessThan(boardAt);
+  });
+
   it("stays quiet when the group number matches the server streak", async () => {
     h = await harness();
     register(h, "111", "Ada");

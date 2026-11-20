@@ -172,17 +172,8 @@ export class SummaryService {
         `streak ${summary.streak ?? "unknown"}.`,
     );
 
-    // The board goes straight under the Activity's score, in its channel.
-    if (postBoard) {
-      try {
-        await this.deps.notifier.send(message.channelId, allTimeBoard(this.deps.store));
-      } catch (error) {
-        day.leaderboardPosted = false;
-        await this.deps.store.save().catch(() => {});
-        this.deps.logger.warn("Could not post the leaderboard", error);
-      }
-    }
-
+    // The correction goes first: it is the remark on the day, and the board
+    // underneath it is the thing the remark is about.
     if (correction) {
       try {
         await this.deps.notifier.send(noticeChannel, correction);
@@ -190,6 +181,18 @@ export class SummaryService {
         day.streakCorrectionSent = false;
         await this.deps.store.save().catch(() => {});
         this.deps.logger.warn("Could not post the streak correction", error);
+      }
+    }
+
+    // The board goes under the Activity's score, in its channel — and under the
+    // correction when one was posted.
+    if (postBoard) {
+      try {
+        await this.deps.notifier.send(message.channelId, allTimeBoard(this.deps.store));
+      } catch (error) {
+        day.leaderboardPosted = false;
+        await this.deps.store.save().catch(() => {});
+        this.deps.logger.warn("Could not post the leaderboard", error);
       }
     }
 

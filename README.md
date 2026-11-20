@@ -51,9 +51,9 @@ handy for testing, not needed in normal play.
 - Everyone who finishes is a player: the first time a summary names someone, the bot
   registers them at **0 points**, creates their role, and pays their share of the split.
   Nobody has to sign up before their first game, and nobody is ever prompted to.
-- Every summary is followed by the **all-time board**, posted by the bot directly under
-  the Activity's score in the same channel — one board per day, however many channels
-  report that day.
+- Every summary is followed by the **all-time board** in the same channel — under the
+  day's streak correction when there is one, otherwise directly under the Activity's
+  score. One board per day, however many channels report that day.
 - The bot never pings anyone: mentions are rendered without a notification, so nobody is
   notified by the summary, the leaderboard or a command reply.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
@@ -149,20 +149,31 @@ at 0 points.
 
 ### Running unattended (Windows)
 
-To keep the bot running outside any terminal, after logging in:
+To keep the bot running outside any terminal:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\install-bot-task.ps1
 ```
 
-That registers a **WordleScoreBot** scheduled task which starts at logon, hides its
-window, restarts the bot if it exits, and appends output to `logs\bot.log`. Undo it with:
+That registers a **WordleScoreBot** scheduled task which:
+
+- starts the bot at boot and at logon, and starts it again every five minutes — the
+  retrigger is what replaces a launcher that was *killed* rather than crashed, which is
+  the one failure the launcher's own restart loop cannot see (a one-shot trigger carries
+  that five-minute pattern, so it survives reboots and Task Scheduler can show the next
+  run);
+- runs as S4U, in its own session, so signing out does not take the bot down with it;
+- restarts the bot if it exits, hides its window, and appends output to `logs\bot.log`.
+
+Undo it with:
 
 ```powershell
 Unregister-ScheduledTask -TaskName "WordleScoreBot" -Confirm:$false
 ```
 
-Run only one copy at a time — two instances would fight over the store.
+Run only one copy at a time — two instances would fight over the store. The task is
+registered with `MultipleInstances IgnoreNew`, and the launcher kills any stale copy of
+the bot on start, so a retrigger or a relaunch cannot double up.
 
 ### Development
 
