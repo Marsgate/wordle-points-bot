@@ -10,11 +10,14 @@ afterEach(async () => {
   h = undefined;
 });
 
-function deps(test: Harness): CommandDeps {
+function deps(test: Harness, noticeChannelId: string | null = null): CommandDeps {
   return {
     store: test.store,
     daily: test.daily,
     display: test.display,
+    notifier: test.notifier.port,
+    noticeChannelId: () => noticeChannelId,
+    logger: silentLogger,
     debug: true,
     now: () => new Date("2026-11-16T20:00:00Z"),
   };
@@ -111,6 +114,57 @@ describe("/wordle-award", () => {
     expect(player.roleId).toBe("role-1");
     expect(h.members.roles.get("role-1")?.name).toBe("0 points");
     expect(reply.content).toContain("0");
+  });
+
+  it("announces the award in the notice channel", async () => {
+    h = await harness({ nicknames: { "user-9": "Nine ✦" } });
+
+    await runCommand(
+      "wordle-award",
+      context({ options: options({ user: { id: "user-9", name: "nine" }, points: 2.5 }) }),
+      deps(h, "chan-wordle"),
+    );
+
+    expect(h.notifier.messages).toHaveLength(1);
+    const message = h.notifier.messages[0];
+    expect(message?.channelId).toBe("chan-wordle");
+    expect(message?.content).toContain("<@user-1> adjusted <@user-9>");
+    expect(message?.content).toContain("**+2.5 points**");
+    expect(message?.content).toContain("**2.5 points**");
+  });
+
+  it("falls back to the channel the command came from", async () => {
+    h = await harness({ nicknames: { "user-9": "Nine ✦" } });
+
+    await runCommand(
+      "wordle-award",
+      context({
+        channelId: "chan-play",
+        options: options({ user: { id: "user-9", name: "nine" }, points: -4 }),
+      }),
+      deps(h),
+    );
+
+    expect(h.notifier.messages).toHaveLength(1);
+    expect(h.notifier.messages[0]?.channelId).toBe("chan-play");
+    expect(h.notifier.messages[0]?.content).toContain("**-4 points**");
+  });
+
+  it("announces nothing when the award is refused", async () => {
+    h = await harness();
+
+    await runCommand(
+      "wordle-award",
+      context({ isAdmin: false, options: options({ user: { id: "user-9", name: "nine" }, points: 2 }) }),
+      deps(h),
+    );
+    await runCommand(
+      "wordle-award",
+      context({ options: options({ user: { id: "user-9", name: "nine" }, points: 0 }) }),
+      deps(h),
+    );
+
+    expect(h.notifier.messages).toHaveLength(0);
   });
 });
 

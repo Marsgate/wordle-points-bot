@@ -216,6 +216,7 @@ export function context(overrides: Partial<CommandContext> = {}): CommandContext
     guildId: GUILD,
     userId: "user-1",
     userName: "tester",
+    channelId: "chan-command",
     isAdmin: true,
     options: options({}),
     now: new Date("2026-11-16T20:00:00Z"),

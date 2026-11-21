@@ -69,7 +69,16 @@ async function main(): Promise<void> {
   attachEvents(client, {
     summary,
     logger,
-    commands: { store, daily, display, debug: env.debugTools, now: () => new Date() },
+    commands: {
+      store,
+      daily,
+      display,
+      notifier,
+      noticeChannelId: () => env.wordleChannelId,
+      logger,
+      debug: env.debugTools,
+      now: () => new Date(),
+    },
   });
 
   let ticking = false;

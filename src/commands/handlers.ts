@@ -6,6 +6,7 @@ import type { JsonStore } from "../store.js";
 import type { DailyService } from "../services/daily.js";
 import type { DisplayService } from "../services/display.js";
 import { allTimeBoard, medal } from "../services/board.js";
+import type { Logger, NotifierPort } from "../services/ports.js";
 
 export interface CommandOptions {
   getNumber(name: string): number | null;
@@ -16,6 +17,8 @@ export interface CommandContext {
   guildId: string;
   userId: string;
   userName: string;
+  /** Channel the command came from; where notices go when no notice channel is set. */
+  channelId: string | null;
   /** Has Manage Server (or Administrator). */
   isAdmin: boolean;
   options: CommandOptions;
@@ -31,6 +34,11 @@ export interface CommandDeps {
   store: JsonStore;
   daily: DailyService;
   display: DisplayService;
+  /** Posts the public record of a manual award. */
+  notifier: NotifierPort;
+  /** Server-wide notice channel; null falls back to the command's own channel. */
+  noticeChannelId: () => string | null;
+  logger: Logger;
   /** Show developer-only commands (close/reopen). Off unless DEBUG_TOOLS is set. */
   debug: boolean;
   now: () => Date;
@@ -59,6 +67,37 @@ function wonDays(store: JsonStore): string[] {  return Object.values(store.data.
 function hasWinnerOn(store: JsonStore, key: string): boolean {
   const day = store.data.days[key];
   return Boolean(day && Object.values(day.entries).some((entry) => entry.solved));
+}
+
+/**
+ * Posts a manual award where the server can see it: the configured notice
+ * channel, or the channel the command came from. The award is already saved,
+ * so a failed post is logged rather than turned into a failed command.
+ */
+async function announceAward(
+  deps: CommandDeps,
+  ctx: CommandContext,
+  userId: string,
+  delta: number,
+  total: number,
+): Promise<void> {
+  const channelId = deps.noticeChannelId() ?? ctx.channelId;
+  if (!channelId) {
+    deps.logger.warn(`Award for <@${userId}> was not announced: no notice channel available.`);
+    return;
+  }
+
+  const sign = delta > 0 ? "+" : "";
+  try {
+    await deps.notifier.send(
+      channelId,
+      "**Wordle points adjusted**\n" +
+        `${mention(ctx.userId)} adjusted ${mention(userId)} by ` +
+        `**${sign}${formatPoints(delta)} points**; their total is now **${formatPoints(total)} points**.`,
+    );
+  } catch (error) {
+    deps.logger.warn(`Could not announce the award for <@${userId}>`, error);
+  }
 }
 
 /**
@@ -94,6 +133,7 @@ export async function runCommand(name: string, ctx: CommandContext, deps: Comman
       if (applied.ok) player.roleId = applied.roleId;
 
       await deps.store.save();
+      await announceAward(deps, ctx, target.id, delta, player.total);
 
       const sign = delta > 0 ? "+" : "";
       return ephemeral(

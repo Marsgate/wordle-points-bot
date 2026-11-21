@@ -103,6 +103,7 @@ export async function handleInteraction(
     guildId: interaction.guildId,
     userId: interaction.user.id,
     userName: interaction.user.username,
+    channelId: interaction.channelId ?? null,
     isAdmin: interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false,
     options: readOptions(interaction),
     now: deps.now(),

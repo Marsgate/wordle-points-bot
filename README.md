@@ -36,7 +36,7 @@ The bot never reads points from names and never edits nicknames.
 
 | Command | What it does |
 |---|---|
-| `/wordle-award user: points:` | Correct a total; halves and negatives allowed |
+| `/wordle-award user: points:` | Correct a total; halves and negatives allowed. The correction is announced in the Wordle channel |
 
 **Developer tools** (off by default): set `DEBUG_TOOLS=true` in `.env` and restart to
 register `/wordle-close` and `/wordle-reopen`. They end or undo the current day early —
@@ -55,7 +55,7 @@ handy for testing, not needed in normal play.
   day's streak correction when there is one, otherwise directly under the Activity's
   score. One board per day, however many channels report that day.
 - The bot never pings anyone: mentions are rendered without a notification, so nobody is
-  notified by the summary, the leaderboard or a command reply.
+  notified by the summary, the leaderboard, an award announcement or a command reply.
 - First place is the fewest guesses. The 10 points split as 1→10, 2→5, 3→3.5, 4→2.5,
   5→2, 6→1.5, rounded to the nearest 0.5 with a floor of 0.5. Rounding can pay out
   slightly more than 10 in total (a 3-way tie pays 10.5).
@@ -125,9 +125,10 @@ TZ=America/Indianapolis  # day boundary, read on first run
 DEBUG_TOOLS=false        # optional: enable /wordle-close and /wordle-reopen
 ```
 
-`DISCORD_WORDLE_CHANNEL_ID` is the channel the bot brings up server-wide news in (the
-streak correction). It is the channel Wordle is played in; leave it empty and that message
-answers in the channel the summary came from. The board always follows the summary itself.
+`DISCORD_WORDLE_CHANNEL_ID` is the channel the bot brings up server-wide news in (streak
+corrections and award announcements). It is the channel Wordle is played in; leave it empty
+and the streak message answers in the channel the summary came from, while an award is
+announced in the channel the command was used in. The board always follows the summary itself.
 
 Invite the bot with the `bot` and `applications.commands` scopes and permission integer
 `268504064` (View Channels, Send Messages, Read Message History, Manage Roles):
@@ -178,7 +179,7 @@ the bot on start, so a retrigger or a relaunch cannot double up.
 ### Development
 
 ```powershell
-npm test          # 131 offline tests, no token or network needed
+npm test          # 135 offline tests, no token or network needed
 npm run typecheck # strict TypeScript
 npm run build     # tsc -> dist/
 npm run demo      # simulated Activity summary, prints the whole flow
